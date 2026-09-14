@@ -10,6 +10,10 @@
   "scripts": {
     "build": "npm run build --workspace server",
     "lint": "npm run lint --workspace server",
+    "test": "npm run test --workspace server",
+    "gen-docs": "npm run gen-docs --workspace server",
+    "smoke": "npm run smoke --workspace server",
+    "mock-bridge": "npm run mock-bridge --workspace server",
     "install-bridge": "npm run install-bridge --workspace server",
     "start": "npm run start --workspace server"
   },

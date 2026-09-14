@@ -119,7 +119,7 @@ Resource: `aftereffects://compositions`. Kept and joined by six more in Phase 4.
 14. `list-presets` searches Windows `Program Files` roots and never the Mac application bundle.
 15. The `JSON` shim is defined after the command functions but before they run, which works, but `JSON.stringify` in the shim ignores the `space` argument, and the shim has no `Object.keys`, `Array.prototype.indexOf` or `String.prototype.trim` polyfills. ES3 helpers are missing.
 16. Both setup scripts run `git clone https://github.com/TheLlamainator/after-effects-mcp.git`, so setup installs the upstream code and ignores every change in this repository.
-17. `HOW-TO-USE.txt` contains `C:\Users\llama\...` paths.
+17. `HOW-TO-USE.txt` contains another person's Windows user folder in its paths.
 18. README files describe and link to upstream.
 19. No tests, no lint, no continuous integration, no ES3 check for the ExtendScript side.
 20. Four panels are loose at the root with spaces in folder names. Their `.jsx` files contain no em dashes; their `GUIDE.md` files do.
