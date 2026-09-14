@@ -1,44 +1,48 @@
-function setLayerExpression(compIndex, layerIndex, propertyName, expressionString) {
-    try {
-         
-        var comp = app.project.items[compIndex];
-         if (!comp || !(comp instanceof CompItem)) {
-            return JSON.stringify({ success: false, message: "Composition not found at index " + compIndex });
-        }
-        var layer = comp.layers[layerIndex];
-         if (!layer) {
-            return JSON.stringify({ success: false, message: "Layer not found at index " + layerIndex + " in composition '" + comp.name + "'"});
-        }
+/*
+ * Expression commands.
+ */
 
-        var transformGroup = layer.property("Transform");
-         if (!transformGroup) {
-             
-             
-        }
+MCP.expressionResult = function (layer, prop) {
+    var info = {
+        hasExpression: _mcpTry(function () { return prop.expression !== ""; }, false),
+        expression: _mcpTry(function () { return prop.expression; }, ""),
+        enabled: _mcpTry(function () { return prop.expressionEnabled; }, null),
+        error: _mcpTry(function () { return prop.expressionError || ""; }, "")
+    };
+    return MCP.serialize.propertyResult(layer, prop, { expressionState: info });
+};
 
-        var property = transformGroup ? transformGroup.property(propertyName) : null;
-         if (!property) {
-            
-             if (layer.property("Effects") && layer.property("Effects").property(propertyName)) {
-                 property = layer.property("Effects").property(propertyName);
-             } else if (layer.property("Text") && layer.property("Text").property(propertyName)) {
-                 property = layer.property("Text").property(propertyName);
-             } 
-
-            if (!property) {
-                 return JSON.stringify({ success: false, message: "Property '" + propertyName + "' not found on layer '" + layer.name + "'." });
-            }
-        }
-
-        if (!property.canSetExpression) {
-            return JSON.stringify({ success: false, message: "Property '" + propertyName + "' does not support expressions." });
-        }
-
-        property.expression = expressionString;
-
-        var action = expressionString === "" ? "removed" : "set";
-        return JSON.stringify({ success: true, message: "Expression " + action + " for '" + propertyName + "' on layer '" + layer.name + "'." });
-    } catch (e) {
-        return JSON.stringify({ success: false, message: "Error setting expression: " + e.toString() + " (Line: " + e.line + ")" });
+MCP.register("setExpression", function (args) {
+    var r = MCP.resolveCompAndLayer(args);
+    var prop = MCP.resolveProperty(r.layer, MCP.requireArg(args, "property"));
+    var expr = MCP.requireArg(args, "expression");
+    if (!prop.canSetExpression) { MCP.fail("Property '" + MCP.pathOf(prop).path + "' does not accept expressions.", "unsupported"); }
+    prop.expression = String(expr);
+    if (MCP.isDefined(args.enabled)) { try { prop.expressionEnabled = MCP.bool(args.enabled, true); } catch (e) {} }
+    var out = MCP.expressionResult(r.layer, prop);
+    if (out.expressionState.error) {
+        out.warning = "The expression was set but After Effects reports an error: " + out.expressionState.error;
     }
-}
+    return out;
+}, { mutating: true });
+
+MCP.register("getExpression", function (args) {
+    var r = MCP.resolveCompAndLayer(args);
+    var prop = MCP.resolveProperty(r.layer, MCP.requireArg(args, "property"));
+    return MCP.expressionResult(r.layer, prop);
+}, { mutating: false });
+
+MCP.register("removeExpression", function (args) {
+    var r = MCP.resolveCompAndLayer(args);
+    var prop = MCP.resolveProperty(r.layer, MCP.requireArg(args, "property"));
+    if (prop.canSetExpression) { prop.expression = ""; }
+    return MCP.expressionResult(r.layer, prop);
+}, { mutating: true });
+
+MCP.register("setExpressionEnabled", function (args) {
+    var r = MCP.resolveCompAndLayer(args);
+    var prop = MCP.resolveProperty(r.layer, MCP.requireArg(args, "property"));
+    if (!prop.canSetExpression || prop.expression === "") { MCP.fail("Property '" + MCP.pathOf(prop).path + "' has no expression.", "not-found"); }
+    prop.expressionEnabled = MCP.bool(args.enabled, true);
+    return MCP.expressionResult(r.layer, prop);
+}, { mutating: true });

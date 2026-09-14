@@ -9,17 +9,22 @@
     "build": "tsc && node scripts/build-bridge.js",
     "build:bridge": "node scripts/build-bridge.js",
     "lint": "node scripts/lint-es3.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen-docs": "node scripts/gen-tools-doc.js",
+    "smoke": "node scripts/smoke.js",
+    "mock-bridge": "node test/bridge-mock/mock-ae.js",
     "start": "node build/index.js",
     "install-bridge": "node install-bridge.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.9.0",
-    "node-fetch": "^3.3.2",
-    "zod": "^3.24.2"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20.17.30",
     "acorn": "^8.14.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.7"
   }
 }

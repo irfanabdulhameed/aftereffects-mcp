@@ -1,306 +1,172 @@
-function getLayerAudioInfo(args) {
-    try {
-        var params = args || {};
-        var compIndex = params.compIndex || 1;
-        var comp = app.project.item(compIndex);
-        if (!comp || !(comp instanceof CompItem)) {
-            throw new Error("Composition not found at index " + compIndex);
-        }
+/*
+ * Markers and audio.
+ */
 
-        var layer = null;
-        if (params.layerIndex !== undefined && params.layerIndex !== null) {
-            layer = comp.layer(params.layerIndex);
-            if (!layer) { throw new Error("Layer not found at index " + params.layerIndex); }
-        } else if (params.layerName) {
-            for (var i = 1; i <= comp.numLayers; i++) {
-                if (comp.layer(i).name === params.layerName) { layer = comp.layer(i); break; }
-            }
-            if (!layer) { throw new Error("Layer not found with name '" + params.layerName + "'."); }
-        } else {
-            throw new Error("Provide layerIndex or layerName.");
-        }
+MCP.markerFromSpec = function (spec) {
+    var mv = new MarkerValue(MCP.isDefined(spec.comment) ? String(spec.comment) : "");
+    mv.duration = MCP.num(spec.duration, 0);
+    if (MCP.isDefined(spec.chapter)) { mv.chapter = String(spec.chapter); }
+    if (MCP.isDefined(spec.url)) { mv.url = String(spec.url); }
+    if (MCP.isDefined(spec.frameTarget)) { mv.frameTarget = String(spec.frameTarget); }
+    if (MCP.isDefined(spec.cuePointName)) { mv.cuePointName = String(spec.cuePointName); }
+    if (MCP.isDefined(spec.label)) { try { mv.label = MCP.enums.labelIndex(spec.label); } catch (e) {} }
+    if (MCP.isDefined(spec.protectedRegion)) { try { mv.protectedRegion = MCP.bool(spec.protectedRegion, false); } catch (e2) {} }
+    if (MCP.isDefined(spec.params) && typeof spec.params === "object") { try { mv.setParameters(spec.params); } catch (e3) {} }
+    return mv;
+};
 
-        var hasAudio = layer.hasAudio || false;
-        var audioEnabled = layer.audioEnabled || false;
-        var sourceInfo = null;
-        var sourceFilePath = null;
+MCP.markerTarget = function (args) {
+    var comp = MCP.resolveComp(args.comp);
+    var target = MCP.arg(args, "target", MCP.isDefined(args.layer) ? "layer" : "comp");
+    if (target === "comp") {
+        return { comp: comp, layer: null, prop: comp.markerProperty };
+    }
+    var layer = MCP.resolveLayer(comp, args.layer);
+    var prop = layer.property("ADBE Marker");
+    if (!prop) { MCP.fail("Layer '" + layer.name + "' does not support markers.", "unsupported"); }
+    return { comp: comp, layer: layer, prop: prop };
+};
 
-        if (layer.source) {
-            var src = layer.source;
-            sourceInfo = {
-                name: src.name,
-                hasAudio: src.hasAudio || false,
-                audioChannels: src.audioChannels || 0,
-                audioSampleRate: src.audioSampleRate || 0,
-                audioDuration: src.audioDuration || 0
-            };
-            if (src.file) {
-                sourceFilePath = src.file.fsName;
-            }
-        }
+MCP.markerList = function (comp, prop) {
+    var out = [];
+    for (var k = 1; k <= prop.numKeys; k++) {
+        var mv = MCP.serialize.marker(prop.keyValue(k));
+        mv.index = k;
+        mv.time = MCP.round(prop.keyTime(k));
+        mv.frame = MCP.frameOf(comp, prop.keyTime(k));
+        out.push(mv);
+    }
+    return out;
+};
 
-        var audioLevelsValue = null;
-        var audioLevelsKeyframes = [];
+MCP.register("addMarker", function (args) {
+    var t = MCP.markerTarget(args);
+    var time = MCP.timeArg(t.comp, args);
+    t.prop.setValueAtTime(time, MCP.markerFromSpec(args));
+    return {
+        composition: MCP.serialize.compRef(t.comp),
+        layer: t.layer ? MCP.serialize.layerRef(t.layer) : null,
+        marker: { time: MCP.round(time), frame: MCP.frameOf(t.comp, time), comment: MCP.arg(args, "comment", ""), duration: MCP.num(args.duration, 0) },
+        markerCount: t.prop.numKeys
+    };
+}, { mutating: true });
+
+MCP.register("addMarkersBulk", function (args) {
+    var t = MCP.markerTarget(args);
+    var markers = args.markers;
+    if (!MCP.isArray(markers) || !markers.length) { MCP.fail("markers must be a non-empty array of {time|frame, comment, duration, label, chapter, url}.", "invalid-argument"); }
+    if (MCP.bool(args.clearExisting, false)) { while (t.prop.numKeys > 0) { t.prop.removeKey(1); } }
+    var added = [], errors = [];
+    for (var i = 0; i < markers.length; i++) {
         try {
-            var audioGroup = layer.property("Audio");
-            if (audioGroup) {
-                var levProp = null;
-                try { levProp = audioGroup.property("Audio Levels"); } catch (e) {}
-                if (!levProp) {
-                    for (var j = 1; j <= audioGroup.numProperties; j++) {
-                        var ap = audioGroup.property(j);
-                        if (ap.matchName === "ADBE Audio Levels" || ap.name === "Audio Levels") {
-                            levProp = ap; break;
-                        }
-                    }
-                }
-                if (levProp) {
-                    audioLevelsValue = levProp.value;
-                    for (var k = 1; k <= levProp.numKeys; k++) {
-                        audioLevelsKeyframes.push({
-                            index: k,
-                            timeInSeconds: levProp.keyTime(k),
-                            value: levProp.keyValue(k)
-                        });
-                    }
-                }
-            }
-        } catch (e) {}
-
-        var existingMarkers = [];
-        try {
-            var markerProp = layer.property("Marker");
-            if (markerProp) {
-                for (var m = 1; m <= markerProp.numKeys; m++) {
-                    var mv = markerProp.keyValue(m);
-                    existingMarkers.push({
-                        index: m,
-                        timeInSeconds: markerProp.keyTime(m),
-                        comment: mv.comment,
-                        duration: mv.duration,
-                        label: mv.label
-                    });
-                }
-            }
-        } catch (e) {}
-
-        return JSON.stringify({
-            status: "success",
-            composition: { name: comp.name, index: compIndex, frameRate: comp.frameRate },
-            layer: {
-                name: layer.name,
-                index: layer.index,
-                hasAudio: hasAudio,
-                audioEnabled: audioEnabled,
-                inPoint: layer.inPoint,
-                outPoint: layer.outPoint
-            },
-            source: sourceInfo,
-            sourceFilePath: sourceFilePath,
-            audioLevels: { currentValue: audioLevelsValue, keyframes: audioLevelsKeyframes },
-            existingMarkers: existingMarkers
-        }, null, 2);
-    } catch (error) {
-        return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
+            var spec = markers[i];
+            var time = MCP.timeArg(t.comp, spec, null);
+            if (!MCP.isDefined(time)) { MCP.fail("Marker " + i + " has no time or frame.", "invalid-argument"); }
+            t.prop.setValueAtTime(time, MCP.markerFromSpec(spec));
+            added.push({ time: MCP.round(time), frame: MCP.frameOf(t.comp, time), comment: MCP.arg(spec, "comment", "") });
+        } catch (e) {
+            errors.push({ index: i, error: e.toString() });
+        }
     }
-}
+    return {
+        composition: MCP.serialize.compRef(t.comp),
+        layer: t.layer ? MCP.serialize.layerRef(t.layer) : null,
+        addedCount: added.length, errorCount: errors.length, added: added, errors: errors, markerCount: t.prop.numKeys
+    };
+}, { mutating: true });
 
-function addMarkersFromArray(args) {
-    try {
-        var params = args || {};
-        var compIndex = params.compIndex || 1;
-        var comp = app.project.item(compIndex);
-        if (!comp || !(comp instanceof CompItem)) {
-            throw new Error("Composition not found at index " + compIndex);
-        }
-
-        var markers = params.markers;
-        if (!markers || !(markers instanceof Array) || markers.length === 0) {
-            throw new Error("markers must be a non-empty array of {timeInSeconds, comment?, duration?, label?} objects.");
-        }
-
-        var markerType = params.markerType || "layer";
-        var layer = null;
-
-        if (markerType === "layer") {
-            if (params.layerIndex !== undefined && params.layerIndex !== null) {
-                layer = comp.layer(params.layerIndex);
-                if (!layer) { throw new Error("Layer not found at index " + params.layerIndex); }
-            } else if (params.layerName) {
-                for (var i = 1; i <= comp.numLayers; i++) {
-                    if (comp.layer(i).name === params.layerName) { layer = comp.layer(i); break; }
-                }
-                if (!layer) { throw new Error("Layer not found with name '" + params.layerName + "'."); }
-            } else {
-                throw new Error("Provide layerIndex or layerName for layer markers, or set markerType to 'comp'.");
-            }
-        }
-
-        var added = [];
-        var errors = [];
-
-        for (var j = 0; j < markers.length; j++) {
-            try {
-                var spec = markers[j];
-                var timeInSeconds = Number(spec.timeInSeconds);
-                var mv = new MarkerValue(spec.comment || "");
-                mv.duration = (spec.duration !== undefined && spec.duration !== null) ? Number(spec.duration) : 0;
-                if (spec.chapter)  { mv.chapter = spec.chapter; }
-                if (spec.url)      { mv.url     = spec.url;     }
-                if (spec.label)    { mv.label   = Number(spec.label); }
-
-                if (markerType === "comp") {
-                    comp.markerProperty.setValueAtTime(timeInSeconds, mv);
-                } else {
-                    layer.property("Marker").setValueAtTime(timeInSeconds, mv);
-                }
-                added.push({ timeInSeconds: timeInSeconds, comment: spec.comment || "" });
-            } catch (e) {
-                errors.push({ index: j, timeInSeconds: markers[j].timeInSeconds, error: e.toString() });
-            }
-        }
-
-        return JSON.stringify({
-            status: "success",
-            message: "Bulk marker insertion complete",
-            addedCount: added.length,
-            errorCount: errors.length,
-            added: added,
-            errors: errors,
-            composition: { name: comp.name, index: compIndex },
-            layer: layer ? { name: layer.name, index: layer.index } : null
-        }, null, 2);
-    } catch (error) {
-        return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
+MCP.register("listMarkers", function (args) {
+    var comp = MCP.resolveComp(args.comp);
+    var out = { composition: MCP.serialize.compRef(comp), compMarkers: MCP.markerList(comp, comp.markerProperty), layers: [] };
+    var layers = MCP.isDefined(args.layer) ? [MCP.resolveLayer(comp, args.layer)] : (MCP.bool(args.includeLayers, true) ? MCP.resolveLayers(comp, { all: true }) : []);
+    for (var i = 0; i < layers.length; i++) {
+        var mp = _mcpTry(function () { return layers[i].property("ADBE Marker"); }, null);
+        if (!mp || !mp.numKeys) { continue; }
+        out.layers.push({ layer: MCP.serialize.layerRef(layers[i]), markers: MCP.markerList(comp, mp) });
     }
-}
+    return out;
+}, { mutating: false });
 
-function addMarker(args) {
-    try {
-        var params = args || {};
-        var compIndex = params.compIndex || 1;
-        var comp = app.project.item(compIndex);
-        if (!comp || !(comp instanceof CompItem)) {
-            throw new Error("Composition not found at index " + compIndex);
-        }
-
-        var timeInSeconds = (params.timeInSeconds !== undefined && params.timeInSeconds !== null)
-            ? Number(params.timeInSeconds)
-            : comp.time;
-
-        var comment  = params.comment  || "";
-        var chapter  = params.chapter  || "";
-        var url      = params.url      || "";
-        var duration = (params.duration !== undefined && params.duration !== null) ? Number(params.duration) : 0;
-        var label    = (params.label   !== undefined && params.label   !== null) ? Number(params.label)   : 0;
-
-        var markerVal = new MarkerValue(comment);
-        markerVal.duration = duration;
-        if (chapter)  { markerVal.chapter    = chapter;  }
-        if (url)      { markerVal.url        = url;      }
-        if (label)    { markerVal.label      = label;    }
-
-        var markerType = params.markerType || "layer"; 
-
-        if (markerType === "comp") {
-            comp.markerProperty.setValueAtTime(timeInSeconds, markerVal);
-            return JSON.stringify({
-                status: "success",
-                message: "Composition marker added",
-                composition: { name: comp.name, index: compIndex },
-                marker: { timeInSeconds: timeInSeconds, comment: comment, duration: duration, label: label }
-            }, null, 2);
-        }
-
-        
-        var layer = null;
-        if (params.layerIndex !== undefined && params.layerIndex !== null) {
-            layer = comp.layer(params.layerIndex);
-            if (!layer) { throw new Error("Layer not found at index " + params.layerIndex); }
-        } else if (params.layerName) {
-            for (var i = 1; i <= comp.numLayers; i++) {
-                if (comp.layer(i).name === params.layerName) { layer = comp.layer(i); break; }
-            }
-            if (!layer) { throw new Error("Layer not found with name '" + params.layerName + "'."); }
-        } else {
-            throw new Error("Provide layerIndex or layerName for a layer marker, or set markerType to 'comp'.");
-        }
-
-        var markerProp = layer.property("Marker");
-        if (!markerProp) { throw new Error("Layer '" + layer.name + "' does not support markers."); }
-        markerProp.setValueAtTime(timeInSeconds, markerVal);
-
-        return JSON.stringify({
-            status: "success",
-            message: "Layer marker added",
-            composition: { name: comp.name, index: compIndex },
-            layer: { name: layer.name, index: layer.index },
-            marker: { timeInSeconds: timeInSeconds, comment: comment, duration: duration, label: label }
-        }, null, 2);
-    } catch (error) {
-        return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
+MCP.register("deleteMarker", function (args) {
+    var t = MCP.markerTarget(args);
+    var removed = 0;
+    if (MCP.isDefined(args.index)) {
+        var idx = Number(args.index);
+        if (idx < 1 || idx > t.prop.numKeys) { MCP.fail("Marker index " + idx + " out of range (1 to " + t.prop.numKeys + ").", "not-found"); }
+        t.prop.removeKey(idx); removed = 1;
+    } else {
+        var time = MCP.timeArg(t.comp, args, null);
+        if (!MCP.isDefined(time)) { MCP.fail("Give a marker index, or a time or frame.", "invalid-argument"); }
+        var ki = MCP.easing.keyIndexAtTime(t.prop, time, MCP.frameDuration(t.comp) / 2);
+        if (ki < 0) { MCP.fail("No marker at " + time + " s.", "not-found"); }
+        t.prop.removeKey(ki); removed = 1;
     }
-}
+    return { composition: MCP.serialize.compRef(t.comp), layer: t.layer ? MCP.serialize.layerRef(t.layer) : null, removed: removed, markerCount: t.prop.numKeys };
+}, { mutating: true });
 
-function setLayerAudioLevels(args) {
-    try {
-        var resolved = resolveCompAndLayer(args || {});
-        var layer = resolved.layer;
+MCP.register("clearMarkers", function (args) {
+    var t = MCP.markerTarget(args);
+    var count = t.prop.numKeys;
+    while (t.prop.numKeys > 0) { t.prop.removeKey(1); }
+    return { composition: MCP.serialize.compRef(t.comp), layer: t.layer ? MCP.serialize.layerRef(t.layer) : null, removed: count };
+}, { mutating: true });
 
-        var audioGroup = layer.property("Audio");
-        if (!audioGroup) {
-            throw new Error("Layer '" + layer.name + "' has no Audio property. Ensure it is an audio or AV layer.");
-        }
+MCP.audioLevelsProp = function (layer) {
+    var ag = _mcpTry(function () { return layer.property("ADBE Audio Group"); }, null);
+    if (!ag) { MCP.fail("Layer '" + layer.name + "' has no Audio group. It must be an audio or audio-video layer.", "unsupported"); }
+    var lev = MCP.childProp(ag, "ADBE Audio Levels");
+    if (!lev) { MCP.fail("Audio Levels property not found on layer '" + layer.name + "'.", "not-found"); }
+    return lev;
+};
 
-        
-        var audioLevelsProp = null;
-        try { audioLevelsProp = audioGroup.property("Audio Levels"); } catch (e) {}
-        if (!audioLevelsProp) {
-            for (var i = 1; i <= audioGroup.numProperties; i++) {
-                var p = audioGroup.property(i);
-                if (p.matchName === "ADBE Audio Levels" || p.name === "Audio Levels") {
-                    audioLevelsProp = p;
-                    break;
-                }
-            }
-        }
-        if (!audioLevelsProp) {
-            throw new Error("Audio Levels property not found on layer '" + layer.name + "'.");
-        }
-
-        var level      = (args.level      !== undefined && args.level      !== null) ? Number(args.level)      : null;
-        var leftLevel  = (args.leftLevel  !== undefined && args.leftLevel  !== null) ? Number(args.leftLevel)  : level;
-        var rightLevel = (args.rightLevel !== undefined && args.rightLevel !== null) ? Number(args.rightLevel) : level;
-
-        if (leftLevel === null && rightLevel === null) {
-            throw new Error("Provide level (both channels), leftLevel, or rightLevel in dB.");
-        }
-        if (leftLevel  === null) { leftLevel  = rightLevel; }
-        if (rightLevel === null) { rightLevel = leftLevel;  }
-
-        var levelsValue = [leftLevel, rightLevel];
-
-        if (args.timeInSeconds !== undefined && args.timeInSeconds !== null) {
-            if (!audioLevelsProp.canVaryOverTime) {
-                throw new Error("Audio Levels property cannot be keyframed on this layer.");
-            }
-            audioLevelsProp.setValueAtTime(Number(args.timeInSeconds), levelsValue);
-        } else {
-            audioLevelsProp.setValue(levelsValue);
-        }
-
-        return JSON.stringify({
-            status: "success",
-            message: "Audio levels set successfully",
-            composition: { name: resolved.comp.name, index: resolved.compIndex },
-            layer: { name: layer.name, index: layer.index },
-            audioLevels: {
-                left: leftLevel,
-                right: rightLevel,
-                timeInSeconds: (args.timeInSeconds !== undefined && args.timeInSeconds !== null) ? Number(args.timeInSeconds) : null
-            }
-        }, null, 2);
-    } catch (error) {
-        return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
+MCP.register("getAudioInfo", function (args) {
+    var r = MCP.resolveCompAndLayer(args);
+    var layer = r.layer;
+    var src = _mcpTry(function () { return layer.source; }, null);
+    var out = {
+        composition: MCP.serialize.compRef(r.comp),
+        layer: MCP.serialize.layerRef(layer),
+        hasAudio: _mcpTry(function () { return layer.hasAudio; }, false),
+        audioEnabled: _mcpTry(function () { return layer.audioEnabled; }, false),
+        inPoint: MCP.round(layer.inPoint), outPoint: MCP.round(layer.outPoint), startTime: MCP.round(layer.startTime),
+        source: null, sourceFilePath: null, audioLevels: null, markers: []
+    };
+    if (src) {
+        out.source = {
+            name: src.name,
+            hasAudio: _mcpTry(function () { return src.hasAudio; }, false),
+            audioChannels: _mcpTry(function () { return src.audioChannels; }, 0),
+            audioSampleRate: _mcpTry(function () { return src.audioSampleRate; }, 0),
+            audioDuration: _mcpTry(function () { return src.audioDuration; }, 0),
+            duration: _mcpTry(function () { return src.duration; }, 0)
+        };
+        out.sourceFilePath = _mcpTry(function () { return src.file ? src.file.fsName : null; }, null);
     }
-}
+    var lev = _mcpTry(function () { return MCP.audioLevelsProp(layer); }, null);
+    if (lev) {
+        out.audioLevels = MCP.serialize.property(lev, { keyframes: true });
+    }
+    out.markers = _mcpTry(function () { return MCP.markerList(r.comp, layer.property("ADBE Marker")); }, []);
+    return out;
+}, { mutating: false });
+
+MCP.register("setAudioLevels", function (args) {
+    var r = MCP.resolveCompAndLayer(args);
+    var lev = MCP.audioLevelsProp(r.layer);
+    var level = MCP.num(args.level, null);
+    var left = MCP.num(args.leftLevel, level);
+    var right = MCP.num(args.rightLevel, level);
+    if (left === null && right === null) { MCP.fail("Provide level (both channels), leftLevel or rightLevel in dB.", "invalid-argument"); }
+    if (left === null) { left = right; }
+    if (right === null) { right = left; }
+    var value = [left, right];
+    var keyIndex = null;
+    if (MCP.isDefined(args.time) || MCP.isDefined(args.frame)) {
+        var t = MCP.timeArg(r.comp, args);
+        keyIndex = MCP.easing.setKey(lev, t, value);
+        if (MCP.isDefined(args.easing)) { MCP.easing.applySegment(lev, keyIndex, args.easing); }
+    } else {
+        lev.setValue(value);
+    }
+    return MCP.serialize.propertyResult(r.layer, lev, { audioLevels: { left: left, right: right }, keyIndex: keyIndex });
+}, { mutating: true });
