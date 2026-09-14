@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  * Fails the build when any .jsx file under server/src/scripts (or the assembled
  * build/scripts/mcp-bridge-auto.jsx) uses syntax newer than ECMAScript 3.

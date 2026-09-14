@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  * Smoke test against a real After Effects with the MCP Bridge Auto panel open.
  * Prints a checklist, then runs a short sequence of tools through the server

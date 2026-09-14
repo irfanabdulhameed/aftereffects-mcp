@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  * Generates docs/TOOLS.md from the registered tools: name, description, the
  * input schema as a table, the output shape summary, and an example call.

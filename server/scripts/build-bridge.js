@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  * Assembles the ExtendScript bridge panel from server/src/scripts into one file,
  * because After Effects loads a ScriptUI panel as a single .jsx.
