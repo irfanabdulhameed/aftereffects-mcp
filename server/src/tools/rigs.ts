@@ -4,6 +4,6 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-export function registerUrigsTools(server: McpServer): void {
+export function registerRigsTools(server: McpServer): void {
   void server;
 }

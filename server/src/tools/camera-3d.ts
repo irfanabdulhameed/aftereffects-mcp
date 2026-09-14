@@ -4,6 +4,6 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-export function registerUcameraU3dTools(server: McpServer): void {
+export function registerCamera3dTools(server: McpServer): void {
   void server;
 }
