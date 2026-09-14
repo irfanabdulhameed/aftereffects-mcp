@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Claude Code local settings (contains machine-specific paths)
+.claude/
+
+# Node
+node_modules/
+build/
+*.log
+
+# Upstream clone history kept locally only
+.git-upstream-backup/
