@@ -1,0 +1,42 @@
+{
+  "name": "Example house style",
+  "durations": {
+    "micro": 0.15,
+    "small": 0.3,
+    "medium": 0.5,
+    "scene": 0.8,
+    "hold": 1.5
+  },
+  "easings": {
+    "entrance": "ease-out",
+    "exit": "ease-in",
+    "move": "ease-in-out",
+    "snap": { "type": "custom", "inSpeed": 0, "inInfluence": 85, "outSpeed": 0, "outInfluence": 20 },
+    "soft": { "type": "bezier", "x1": 0.25, "y1": 0.1, "x2": 0.25, "y2": 1 }
+  },
+  "stagger": {
+    "default": 0.08,
+    "tight": 0.05,
+    "loose": 0.15
+  },
+  "type": {
+    "h1": { "font": "Helvetica-Bold", "fontSize": 120, "fillColor": "#FFFFFF", "tracking": -20, "justification": "center" },
+    "h2": { "font": "Helvetica-Bold", "fontSize": 64, "fillColor": "#FFFFFF", "tracking": 0, "justification": "left" },
+    "body": { "font": "Helvetica", "fontSize": 36, "fillColor": "#C9CDD6", "leading": 44, "justification": "left" },
+    "label": { "font": "Helvetica-Bold", "fontSize": 24, "fillColor": "#7C86FF", "tracking": 120, "allCaps": true }
+  },
+  "colors": {
+    "brand": "#7C86FF",
+    "ink": "#0E0F14",
+    "paper": "#FFFFFF",
+    "muted": "#C9CDD6",
+    "accent": "#FFB800"
+  },
+  "rules": [
+    "Entrances use @style.entrance over @style.durations.small; exits use @style.exit.",
+    "Stagger list items by @style.stagger.default.",
+    "Headlines are @style.h1 and never smaller than 96 px.",
+    "Backgrounds are @style.ink; never pure black.",
+    "No overshoot on corporate work."
+  ]
+}
