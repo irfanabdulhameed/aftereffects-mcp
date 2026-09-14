@@ -1,13 +1,24 @@
 # macOS
 .DS_Store
 
-# Claude Code local settings (contains machine-specific paths)
-.claude/
+# Claude Code local settings (machine-specific paths). The shared skill is kept.
+.claude/*
+!.claude/skills/
 
 # Node
 node_modules/
-build/
+server/build/
 *.log
+npm-debug.log*
 
 # Upstream clone history kept locally only
 .git-upstream-backup/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# After Effects temporary files
+*.aep-lock
+*auto-save*

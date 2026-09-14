@@ -1,0 +1,19 @@
+{
+  "name": "aftereffects-mcp",
+  "version": "2.0.0",
+  "description": "Model Context Protocol server and builder panels for Adobe After Effects",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace server",
+    "lint": "npm run lint --workspace server",
+    "install-bridge": "npm run install-bridge --workspace server",
+    "start": "npm run start --workspace server"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
