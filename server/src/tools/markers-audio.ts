@@ -121,10 +121,10 @@ const MarkerFields = {
   comment: z.string().optional().describe('Marker text.'),
   duration: z.number().min(0).optional().describe('Seconds. 0 is a point marker.'),
   label: z.union([z.enum(LABEL_COLORS), z.number().int().min(0).max(16)]).optional(),
-  chapter: z.string().optional(),
-  url: z.string().optional(),
-  frameTarget: z.string().optional(),
-  cuePointName: z.string().optional(),
+  chapter: z.string().optional().describe('Chapter name for the marker.'),
+  url: z.string().optional().describe('Web link for the marker.'),
+  frameTarget: z.string().optional().describe('Frame target for the URL.'),
+  cuePointName: z.string().optional().describe('Cue point name for the marker.'),
   protectedRegion: z.boolean().optional().describe('Protected region marker (After Effects 2020 and later).'),
   params: z.record(z.string()).optional().describe('Cue point key/value pairs.'),
 };
@@ -186,7 +186,7 @@ export function registerMarkersAudioTools(server: McpServer): void {
       'Returns: removed count and the markers remaining. ' +
       'Notes: undoable in one step. ' +
       'Example: target "comp", frame 48.',
-    input: { comp: CompRef.optional(), target: z.enum(['comp', 'layer']).optional(), layer: LayerRef.optional(), index: z.number().int().positive().optional(), ...TimeArgs },
+    input: { comp: CompRef.optional(), target: z.enum(['comp', 'layer']).optional(), layer: LayerRef.optional(), index: z.number().int().positive().optional().describe('1-based marker index from list-markers.'), ...TimeArgs },
   });
 
   defineTool(server, {
@@ -226,7 +226,7 @@ export function registerMarkersAudioTools(server: McpServer): void {
       'Returns: the Audio Levels property state and the values set. ' +
       'Notes: two calls with times make a fade. Undoable in one step. ' +
       'Example: level -12 at frame 0, then level -48 at frame 24 with easing "ease-in".',
-    input: { comp: CompRef.optional(), layer: LayerRef, level: z.number().optional(), leftLevel: z.number().optional(), rightLevel: z.number().optional(), ...TimeArgs, easing: Easing.optional() },
+    input: { comp: CompRef.optional(), layer: LayerRef, level: z.number().optional().describe('Level in dB for both channels. 0 unity, -6 half, -48 near silence.'), leftLevel: z.number().optional().describe('Left channel level in dB; overrides level.'), rightLevel: z.number().optional().describe('Right channel level in dB; overrides level.'), ...TimeArgs, easing: Easing.optional() },
   });
 
   defineTool(server, {
@@ -243,9 +243,9 @@ export function registerMarkersAudioTools(server: McpServer): void {
       'Example: filePath from get-audio-info, numPoints 400, then markers at peakTimes.',
     input: {
       filePath: z.string().min(1).describe('Absolute path to the audio file.'),
-      numPoints: z.number().int().min(10).max(20000).optional(),
-      peakThreshold: z.number().min(0).max(1).optional(),
-      minGapSeconds: z.number().min(0).optional(),
+      numPoints: z.number().int().min(10).max(20000).optional().describe('Number of envelope samples. Default 200.'),
+      peakThreshold: z.number().min(0).max(1).optional().describe('Fraction of the loudest point a peak must reach. Default 0.6.'),
+      minGapSeconds: z.number().min(0).optional().describe('Minimum time between peaks. Default 0.08.'),
     },
     handler: async (args) => {
       const filePath = args.filePath.replace(/^~(?=$|\/|\\)/, os.homedir());
@@ -281,6 +281,55 @@ export function registerMarkersAudioTools(server: McpServer): void {
         peakTimes: result.peakTimes,
         waveformPoints: result.waveformPoints,
       };
+    },
+  });
+  defineTool(server, {
+    name: 'audio-to-keyframes',
+    group: 'markers-audio',
+    description:
+      'Runs After Effects\' own "Convert Audio to Keyframes" on a layer with audio. It creates a null layer named "Audio Amplitude" with three Slider Control effects, Left Channel, Right Channel and Both Channels, keyframed on every frame with that channel\'s loudness, so other properties can follow the sound through an expression. ' +
+      'Use when: scaling a logo to the beat, driving glow intensity or a bar graph from music or a voice track. Do not use for: finding beat times (analyze-audio-waveform) or placing markers (markers-from-beats). ' +
+      'Inputs: layer (default: the selected layer); name to rename the new null; useLayerRange true to set the work area to the layer\'s in and out points during the conversion and restore it after. ' +
+      'Returns: the new layer summary, sliders[] with property paths, key counts and peak values, and ready-made expression snippets such as thisComp.layer("Audio Amplitude").effect("Both Channels")("Slider"). ' +
+      'Notes: only the composition work area is sampled, so set-work-area first or pass useLayerRange. Slider values are unscaled amplitude, typically 0 to 30; map them with linear(). Fails with code unsupported when the menu command is missing. Undoable in one step. ' +
+      'Example: layer {name: "Music"}, then set-expression on "Transform/Scale" with linear(thisComp.layer("Audio Amplitude").effect("Both Channels")("Slider"), 0, 20, 100, 120).',
+    input: {
+      comp: CompRef.optional(),
+      layer: LayerRef.optional().describe('Layer with audio. Default: the layer selected in the timeline.'),
+      name: z.string().optional().describe('Rename the created "Audio Amplitude" null.'),
+      useLayerRange: z.boolean().optional().describe('Temporarily set the work area to the layer\'s in and out points. Default false.'),
+    },
+  });
+
+  defineTool(server, {
+    name: 'markers-from-beats',
+    group: 'markers-audio',
+    description:
+      'Places a marker on every beat of a composition or layer. Either give a tempo in bpm (with offset, beatsPerBar, subdivisions and a start and end range) to build an even grid whose comments count the beat in the bar and whose downbeats get a label colour, or pass peakTimes[] from analyze-audio-waveform to mark detected hits. ' +
+      'Use when: cutting or animating to music, or turning detected transients into visible markers. Do not use for: arbitrary marker lists (add-markers-bulk) or reading markers (list-markers). ' +
+      'Inputs: target "comp" (default) or "layer" with layer; bpm; offset in seconds added to every time (default 0); beatsPerBar (default 4); subdivisions per beat (default 1); start and end in seconds or startFrame and endFrame (default: the whole composition, or the work area with useWorkArea true); labelDownbeats (default true) with downbeatLabel (default "red"); peakTimes[]; comment for peak markers; snapToFrames (default true); clearExisting. ' +
+      'Returns: mode, bpm and beatInterval, count, first and last time and frame, and the marker count after writing. ' +
+      'Notes: capped at 5000 markers. Markers at the same time replace each other. Undoable in one step. ' +
+      'Example: bpm 123.5, offset 0.12, beatsPerBar 4, clearExisting true.',
+    input: {
+      comp: CompRef.optional(),
+      target: z.enum(['comp', 'layer']).optional(),
+      layer: LayerRef.optional(),
+      bpm: z.number().positive().optional().describe('Tempo in beats per minute.'),
+      offset: z.number().optional().describe('Seconds added to every marker time. Default 0.'),
+      beatsPerBar: z.number().int().min(1).max(32).optional().describe('Beats per bar for numbering and downbeats. Default 4.'),
+      subdivisions: z.number().int().min(1).max(16).optional().describe('Markers per beat. Default 1.'),
+      start: z.number().min(0).optional().describe('Range start in seconds. Default 0.'),
+      startFrame: z.number().int().min(0).optional().describe('Range start in frames; wins over start.'),
+      end: z.number().positive().optional().describe('Range end in seconds. Default: composition end.'),
+      endFrame: z.number().int().positive().optional().describe('Range end in frames; wins over end.'),
+      useWorkArea: z.boolean().optional().describe('Use the work area as the range when start and end are not given. Default false.'),
+      labelDownbeats: z.boolean().optional().describe('Colour the first beat of each bar. Default true.'),
+      downbeatLabel: z.union([z.enum(LABEL_COLORS), z.number().int().min(0).max(16)]).optional().describe('Label colour for downbeats. Default "red".'),
+      peakTimes: z.array(z.number().min(0)).max(5000).optional().describe('Times in seconds from analyze-audio-waveform. Used instead of bpm.'),
+      comment: z.string().optional().describe('Comment for peak markers. Default: the peak number.'),
+      snapToFrames: z.boolean().optional().describe('Round times to whole frames. Default true.'),
+      clearExisting: z.boolean().optional().describe('Remove existing markers on the target first. Default false.'),
     },
   });
 }

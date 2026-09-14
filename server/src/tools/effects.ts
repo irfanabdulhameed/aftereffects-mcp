@@ -91,7 +91,7 @@ export function registerEffectsTools(server: McpServer): void {
       'Returns: count and effects[]. ' +
       'Notes: read-only. ' +
       'Example: layer {index: 2}, includeProperties true.',
-    input: { comp: CompRef.optional(), layer: LayerRef, includeProperties: z.boolean().optional(), depth: z.number().int().min(0).max(6).optional() },
+    input: { comp: CompRef.optional(), layer: LayerRef, includeProperties: z.boolean().optional(), depth: z.number().int().min(0).max(6).optional().describe('Property tree depth when includeProperties is true. Default 2.') },
   });
 
   defineTool(server, {
@@ -106,9 +106,9 @@ export function registerEffectsTools(server: McpServer): void {
       'Notes: read-only. The result is cached inside the panel for the session. Prefer matchNames in later calls. ' +
       'Example: query "glow".',
     input: {
-      query: z.string().optional(),
-      category: z.string().optional(),
-      maxResults: z.number().int().positive().max(5000).optional(),
+      query: z.string().optional().describe('Case-insensitive substring of the name, matchName or category.'),
+      category: z.string().optional().describe('Category name such as "Blur & Sharpen".'),
+      maxResults: z.number().int().positive().max(5000).optional().describe('Maximum effects to return. Default 500.'),
     },
   });
 
@@ -123,7 +123,7 @@ export function registerEffectsTools(server: McpServer): void {
       'Returns: composition, layer, effect with properties[]. ' +
       'Notes: read-only. ' +
       'Example: effect "CC Light Sweep".',
-    input: { comp: CompRef.optional(), layer: LayerRef, effect: EffectRef, depth: z.number().int().min(0).max(6).optional() },
+    input: { comp: CompRef.optional(), layer: LayerRef, effect: EffectRef, depth: z.number().int().min(0).max(6).optional().describe('Property tree depth. Default 3.') },
   });
 
   defineTool(server, {
@@ -141,10 +141,10 @@ export function registerEffectsTools(server: McpServer): void {
       layer: LayerRef,
       effect: EffectRef,
       property: EffectPropertyPath,
-      value: z.unknown().optional(),
+      value: z.unknown().optional().describe('Value in the property\'s units. Colours in any form; layer properties accept a layer reference.'),
       ...TimeArgs,
       easing: Easing.optional(),
-      expression: z.string().optional(),
+      expression: z.string().optional().describe('Expression source to set on the property.'),
     },
   });
 
@@ -171,7 +171,7 @@ export function registerEffectsTools(server: McpServer): void {
       'Returns: the property state and the keyframe written. ' +
       'Notes: undoable in one step. ' +
       'Example: effect "Glow", property "Glow Intensity", value 2.5, frame 0, then again with value 0 at frame 24 and easing "ease-out".',
-    input: { comp: CompRef.optional(), layer: LayerRef, effect: EffectRef, property: EffectPropertyPath, value: z.unknown(), ...TimeArgs, easing: Easing.optional() },
+    input: { comp: CompRef.optional(), layer: LayerRef, effect: EffectRef, property: EffectPropertyPath, value: z.unknown().describe("Value in the property's units."), ...TimeArgs, easing: Easing.optional() },
   });
 
   defineTool(server, {
@@ -210,7 +210,7 @@ export function registerEffectsTools(server: McpServer): void {
       'Returns: the effect\'s new index and the whole stack order. ' +
       'Notes: undoable in one step. ' +
       'Example: effect "Drop Shadow", toBottom true.',
-    input: { comp: CompRef.optional(), layer: LayerRef, effect: EffectRef, toIndex: z.number().int().positive().optional(), toTop: z.boolean().optional(), toBottom: z.boolean().optional() },
+    input: { comp: CompRef.optional(), layer: LayerRef, effect: EffectRef, toIndex: z.number().int().positive().optional().describe('1-based position in the effect stack.'), toTop: z.boolean().optional(), toBottom: z.boolean().optional() },
   });
 
   defineTool(server, {

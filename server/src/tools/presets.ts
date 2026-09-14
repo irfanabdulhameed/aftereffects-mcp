@@ -105,8 +105,8 @@ export function collectPresetFiles(roots: string[], recursive: boolean, query: s
 const PresetSearchArgs = {
   presetRoots: z.array(z.string()).optional().describe('Folders to search. Default: the After Effects Presets folder and the user presets folder.'),
   recursive: z.boolean().optional().describe('Search subfolders. Default true.'),
-  maxResults: z.number().int().positive().max(5000).optional(),
-  maxDepth: z.number().int().positive().max(25).optional(),
+  maxResults: z.number().int().positive().max(5000).optional().describe('Maximum preset files to return.'),
+  maxDepth: z.number().int().positive().max(25).optional().describe('Maximum folder depth. Default 10.'),
 };
 
 export function registerPresetTools(server: McpServer): void {
@@ -142,7 +142,7 @@ export function registerPresetTools(server: McpServer): void {
       'Returns: query, searchedRoots, resultCount, presets[]. ' +
       'Notes: read-only, case-insensitive. ' +
       'Example: query "typewriter" then apply-preset with the returned path.',
-    input: { query: z.string().min(1), ...PresetSearchArgs },
+    input: { query: z.string().min(1).describe('Text to match in the file name or path, case-insensitive.'), ...PresetSearchArgs },
     handler: async (args) => {
       const roots = uniqueExistingDirs(args.presetRoots && args.presetRoots.length ? args.presetRoots : defaultPresetRoots());
       const presets = collectPresetFiles(roots, args.recursive ?? true, args.query, args.maxResults ?? 200, args.maxDepth ?? 10);
@@ -174,7 +174,7 @@ export function registerPresetTools(server: McpServer): void {
       'Returns: the preset path and how many effects it holds. ' +
       'Notes: saving presets by script is only available in some After Effects versions; when unsupported the error says to use Animation > Save Animation Preset. Does not change the project. ' +
       'Example: layer {name: "Title"}, outputPath "~/Documents/Adobe/After Effects User Presets/Title Glow.ffx".',
-    input: { comp: CompRef.optional(), layer: LayerRef, outputPath: z.string().min(1), effects: z.array(EffectRef).optional() },
+    input: { comp: CompRef.optional(), layer: LayerRef, outputPath: z.string().min(1).describe('Destination .ffx path. A leading ~ is expanded; folders are created.'), effects: z.array(EffectRef).optional() },
     toBridgeArgs: (args) => ({ ...args, outputPath: args.outputPath.replace(/^~(?=$|\/|\\)/, os.homedir()) }),
   });
 }

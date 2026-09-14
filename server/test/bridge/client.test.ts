@@ -66,10 +66,10 @@ describe('BridgeClient', () => {
   });
 
   it('reports timeout while a command is still running and get-results finds it later', async () => {
-    tb = makeTestBridge({ delays: { render: 600 }, timeoutMs: 150 });
+    tb = makeTestBridge({ delays: { slowTestCommand: 600 }, timeoutMs: 150 });
     let caught: BridgeError | undefined;
     try {
-      await tb.client.run('render', {});
+      await tb.client.run('slowTestCommand', {});
     } catch (err) {
       caught = err as BridgeError;
     }
@@ -83,9 +83,9 @@ describe('BridgeClient', () => {
   });
 
   it('uses the render timeout class', async () => {
-    tb = makeTestBridge({ delays: { render: 300 }, timeoutMs: 100 });
-    const res = await tb.client.run('render', {}, { timeout: 'render' });
-    expect(res).toMatchObject({ mock: true, command: 'render' });
+    tb = makeTestBridge({ delays: { slowTestCommand: 300 }, timeoutMs: 100 });
+    const res = await tb.client.run('slowTestCommand', {}, { timeout: 'render' });
+    expect(res).toMatchObject({ mock: true, command: 'slowTestCommand' });
   });
 
   it('reads the heartbeat and options, and cleans old results', async () => {

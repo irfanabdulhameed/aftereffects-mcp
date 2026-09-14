@@ -51,6 +51,7 @@ if (typeof JSON.stringify !== "function") {
             }
             for (var k in value) {
                 if (Object.prototype.hasOwnProperty.call(value, k)) {
+                    if (value[k] === undefined || typeof value[k] === "function") { continue; }
                     var ov = str(value[k], inner, gap);
                     if (ov !== undefined) { parts.push(quote(k) + (gap ? ": " : ":") + ov); }
                 }
