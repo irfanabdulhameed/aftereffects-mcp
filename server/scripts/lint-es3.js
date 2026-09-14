@@ -62,7 +62,7 @@ export function lintEs3File(file) {
     if (/\bJSON\s*\.\s*(stringify|parse)\s*\(/.test(stripped) && !/\btypeof\s+JSON\b/.test(stripped)) {
       // fine: lib/json.jsx supplies JSON. Nothing to report.
     }
-    if (/—/.test(line)) problems.push(`${file}:${i + 1} contains an em dash`);
+    if (line.indexOf(String.fromCharCode(0x2014)) !== -1) problems.push(`${file}:${i + 1} contains an em dash`);
   });
   return problems;
 }

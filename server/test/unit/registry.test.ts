@@ -48,7 +48,7 @@ describe('tool registry', () => {
     for (const entry of catalog) {
       expect(entry.description, entry.name).toContain('Use when:');
       expect(entry.description, entry.name).toContain('Returns:');
-      expect(entry.description, entry.name).not.toContain('—');
+      expect(entry.description, entry.name).not.toContain(String.fromCharCode(0x2014));
     }
   });
 });
