@@ -166,7 +166,8 @@ describe('render queue', () => {
   it('add-to-render-queue expands ~ and returns the item', async () => {
     const r = await callTool(client, 'add-to-render-queue', { comp: { name: 'Main Comp' }, outputPath: '~/Movies/out.mov', outputModuleTemplate: 'Lossless' });
     expect(r.isError).toBe(false);
-    expect(r.json).toMatchObject({ itemIndex: 1, status: 'QUEUED', outputPath: path.join(os.homedir(), 'Movies', 'out.mov') });
+    expect(r.json).toMatchObject({ itemIndex: 1, status: 'QUEUED' });
+    expect(path.normalize(String(r.json.outputPath))).toBe(path.join(os.homedir(), 'Movies', 'out.mov'));
     const last = tb.mock.state.log[tb.mock.state.log.length - 1];
     expect(last.command).toBe('addToRenderQueue');
   });
@@ -219,7 +220,7 @@ describe('render with aerender', () => {
     expect(noBin.json.message).toMatch(/aerender was not found/);
   });
 
-  it('spawns the binary detached with a log file when the project is saved', async () => {
+  it.skipIf(process.platform === 'win32')('spawns the binary detached with a log file when the project is saved', async () => {
     const fake = path.join(scratch, 'fake-aerender.sh');
     fs.writeFileSync(fake, '#!/bin/sh\necho "fake aerender $@"\nexit 0\n');
     fs.chmodSync(fake, 0o755);
