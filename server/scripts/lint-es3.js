@@ -62,6 +62,8 @@ export function lintEs3File(file) {
     if (/\bJSON\s*\.\s*(stringify|parse)\s*\(/.test(stripped) && !/\btypeof\s+JSON\b/.test(stripped)) {
       // fine: lib/json.jsx supplies JSON. Nothing to report.
     }
+    const es6 = /\b(Number\.(isFinite|isInteger|isNaN|parseFloat|parseInt)|Math\.(trunc|sign|log2|log10|cbrt|hypot|fround|clz32)|new (Map|Set|WeakMap|Promise|Symbol)\b)/.exec(stripped);
+    if (es6) problems.push(`${file}:${i + 1} uses ${es6[1]}, which does not exist in ExtendScript`);
     if (line.indexOf(String.fromCharCode(0x2014)) !== -1) problems.push(`${file}:${i + 1} contains an em dash`);
   });
   return problems;
