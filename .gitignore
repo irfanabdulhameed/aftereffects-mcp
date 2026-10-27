@@ -11,7 +11,7 @@ server/build/
 *.log
 npm-debug.log*
 
-# Upstream clone history kept locally only
+# Old clone history kept locally only
 .git-upstream-backup/
 
 # Editors

@@ -1,7 +1,7 @@
 /**********************************************************************************************
  *  POWER WARP TRANSITION  -  reusable builder panel for Adobe After Effects
  *  ------------------------------------------------------------------------------------------
- *  Recreates the depth-map "Power Warp Transition" (VideoLancer technique) as a one-click rig.
+ *  Builds the depth-map "Power Warp Transition" as a one-click rig.
  *
  *  WHAT IT DOES
  *    You give it 3 layers that already live in your comp:
@@ -31,7 +31,7 @@
     var VERSION     = "1.0";
 
     /* =========================================================================================
-     *  SPEC  -  every number lifted from the tutorial, in one place so it is easy to tweak.
+     *  SPEC  -  every number in one place so it is easy to tweak.
      *  (Distortion magnitudes flagged "* INT" are multiplied by the Intensity control.)
      * =======================================================================================*/
     var SPEC = {
@@ -206,7 +206,7 @@
             if (opts.mods.warp || opts.mods.aberration){
                 warpMap = newDepthCopy(D, "Warp Map");
                 buildMapBase(warpMap, SPEC.warpMap);
-                // Compound Blur (self-referencing) sits before the box blur in the tutorial;
+                // Compound Blur (self-referencing) sits before the box blur;
                 // we add it after for simpler ordering - visually equivalent smoothing.
                 try {
                     var cb = addEffect(warpMap, "ADBE Compound Blur", "Compound Blur");
@@ -454,7 +454,7 @@
         "Depth map     --  grayscale depth pass of clip A; drives everything.  (required)",
         "Start (sec)   --  when the transition begins; 'Use playhead' copies current time.",
         "Duration (s)  --  length of the transition (about 1.0-2.0 s works best).",
-        "Intensity     --  master distortion strength.  0.5 subtle / 1.0 tutorial / 2.0 extreme.",
+        "Intensity     --  master distortion strength.  0.5 subtle / 1.0 default / 2.0 extreme.",
         "Scan color    --  RGB of the glowing depth scan-line (default electric blue).",
         "Modules       --  turn individual layers on/off (Gradient Wipe is always on).",
         "",

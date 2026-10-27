@@ -60,7 +60,7 @@ MCP.rigs.describe({
         { name: "incoming", "default": null, description: "LayerRef of the shot revealed underneath. Optional, must differ from the other two." },
         { name: "start", "default": 0.5, description: "Transition start in seconds (snapped to a frame)." },
         { name: "duration", "default": 1.5, description: "Transition length in seconds (1.0 to 2.0 works best)." },
-        { name: "intensity", "default": 1.0, description: "Master distortion strength: 0.5 subtle, 1.0 tutorial, 2.0 extreme." },
+        { name: "intensity", "default": 1.0, description: "Master distortion strength: 0.5 subtle, 1.0 default, 2.0 extreme." },
         { name: "scanColor", "default": [0, 90, 255], description: "Colour of the glowing scan line." },
         { name: "modules", "default": { scanLine: true, warp: true, aberration: true, shake: true, fine: true }, description: "Turn individual modules off. Gradient Wipe is always on." }
     ],
@@ -155,7 +155,7 @@ MCP.register("rigPowerWarpTransition", function (args) {
     if (opts.mods.warp || opts.mods.aberration) {
         warpMap = MCP.rigs.pwNewDepthCopy(D, "Warp Map");
         MCP.rigs.pwBuildMapBase(warpMap, SPEC.warpMap, notes);
-        // Compound Blur (self-referencing) sits before the box blur in the tutorial;
+        // Compound Blur (self-referencing) sits before the box blur;
         // it is added after for simpler ordering: visually equivalent smoothing.
         try {
             var cb = MCP.rigs.addEffect(warpMap, "ADBE Compound Blur", "Compound Blur");

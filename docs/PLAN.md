@@ -7,7 +7,7 @@ This is the target for the overhaul. `docs/AUDIT.md` describes the starting poin
 ```
 .
 ├── README.md                      user-facing README
-├── LICENSE                        MIT, upstream attribution kept
+├── LICENSE                        MIT
 ├── CHANGELOG.md
 ├── package.json                   root workspace, scripts delegate to /server
 ├── .github/workflows/ci.yml       install, lint, build, test on push and pull request
@@ -106,7 +106,7 @@ This is the target for the overhaul. `docs/AUDIT.md` describes the starting poin
 │   ├── depth-map-blur-reveal/
 │   └── blur-color-reveal/
 ├── setup/
-│   ├── setup-mac.sh               uses ./server, never clones upstream
+│   ├── setup-mac.sh               uses ./server, never clones another repository
 │   ├── setup-windows.ps1
 │   └── README.md
 ├── legacy/

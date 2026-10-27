@@ -15,7 +15,7 @@ The AE guard: After Effects keeps running through long and unattended sessions o
 
 ## 2.0.0 (2026-09-14)
 
-A rewrite of the fork into a full After Effects MCP server. Organised by the phases in `docs/PLAN.md`.
+A rewrite into a full After Effects MCP server. Organised by the phases in `docs/PLAN.md`.
 
 ### Audit and plan
 
@@ -26,7 +26,7 @@ A rewrite of the fork into a full After Effects MCP server. Organised by the pha
 
 - The server moved from `ae-mcp-setup/after-effects-mcp` to `server/`; the entry point is `server/build/index.js`.
 - The four builder panels moved, byte-identical, to `panels/<kebab-name>/` with their guides.
-- Setup scripts moved to `setup/` and now install this repository's server instead of cloning the upstream one.
+- Setup scripts moved to `setup/` and now install this repository's server.
 - `HOW-TO-USE.txt`, which contained another person's paths, was removed. Byte order marks were stripped.
 - The ten dead standalone scripts moved to `legacy/standalone-scripts/`.
 - The bridge panel is assembled at build time from `server/src/scripts/{lib,commands,panel}` by `server/scripts/build-bridge.js`.
@@ -70,4 +70,4 @@ A rewrite of the fork into a full After Effects MCP server. Organised by the pha
 
 ## 1.0.0
 
-The starting point: a fork of TheLlamainator/after-effects-mcp (itself based on Dakkshin/after-effects-mcp) wrapped in a setup folder, with four builder panels at the repository root. 30 tools, one command file, one result file, no tests.
+The starting point: a small MCP server wrapped in a setup folder, with four builder panels at the repository root. 30 tools, one command file, one result file, no tests.

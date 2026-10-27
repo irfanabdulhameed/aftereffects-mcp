@@ -14,37 +14,19 @@ What sets it apart from other After Effects servers:
 
 ## How it works
 
-You describe the motion in plain words. The agent turns it into tool calls, the server checks them and hands them to a small panel running inside After Effects, and the panel builds the result in your open project. The agent can then look at rendered frames of its own work before it reports back.
+You describe what you want. The agent plans it, the server checks it, and a small panel inside After Effects builds it.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor You
-    participant Agent as Agent (Claude Code, Claude Desktop, VS Code)
-    participant Server as aftereffects-mcp server
-    participant Panel as Bridge panel in After Effects
-    You->>Agent: "Add a lower third for Maya Chen that slides in at 1 s"
-    Agent->>Server: create-text-layer, set-keyframes-multi, ... (or one batch)
-    Server->>Server: validate inputs, resolve @style values, guard checks
-    Server->>Panel: command file in the bridge folder
-    Panel->>Panel: run as one undo step
-    Panel-->>Server: result file (or a clear error)
-    Agent->>Server: see-frame at 1.5 s
-    Server-->>Agent: PNG of the frame
-    Agent-->>You: done, with what it built and what it checked
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/how-it-works-dark.svg">
+  <img alt="You describe the motion, the AI agent plans the steps, the MCP server checks them, and a panel builds them in After Effects; the result comes back to the agent" src="docs/media/how-it-works-light.svg" width="100%">
+</picture>
 
-A typical session is a short loop: you direct, the agent builds and checks its own frames, you review, and only the changes are rebuilt.
+A typical session:
 
-```mermaid
-flowchart LR
-    D[You describe a scene<br/>or give a reference] --> B[Agent builds it<br/>comps, layers, keys, effects]
-    B --> C{Agent checks<br/>its own frames}
-    C -- something is off --> B
-    C -- looks right --> R[You review<br/>in After Effects]
-    R -- notes --> B
-    R -- approved --> X[Render with the<br/>render queue or aerender]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/session-dark.svg">
+  <img alt="You direct, the agent builds, the agent checks its own frames, you review, then render; fixes and your notes go back to the build step" src="docs/media/session-light.svg" width="100%">
+</picture>
 
 ## Quick start
 
@@ -121,46 +103,28 @@ Each panel is a dockable ScriptUI panel in [panels/](panels/) with its own guide
 
 **Blur Color Reveal** ([guide](panels/blur-color-reveal/GUIDE.md)). A soft two-tone colour disc blooms outward to reveal the content beneath. Tool: `rig-blur-color-reveal`.
 
-## Architecture in one diagram
+## Under the hood
 
-```mermaid
-flowchart LR
-    A[MCP client] -- stdio --> B[Node server<br/>validates, batches, normalises]
-    B -- cmd-id.json --> Q[(~/Documents/ae-mcp-bridge<br/>queue/ results/ frames/)]
-    Q -- poll --> P[Bridge panel<br/>ExtendScript inside After Effects]
-    P -- undo group per command --> AE[After Effects]
-    P -- res-id.json --> Q
-    Q --> B --> A
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/bridge-dark.svg">
+  <img alt="The MCP server and the panel in After Effects pass command and result files through a shared folder" src="docs/media/bridge-light.svg" width="100%">
+</picture>
 
-Commands are files with ids; the panel executes them in order inside one undo group each; results come back as files matched on the id. Details, timing, environment variables and the reasons behind the design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The server and the panel talk through files in a shared folder, so nothing needs a network port or a plug-in. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## The guard (macOS)
 
-After Effects runs one script at a time, and one alert box stops everything until someone clicks it. The guard keeps long or overnight runs going without touching your screen:
+One popup in After Effects can stop everything until someone clicks it. The guard keeps long runs going without touching your screen:
 
-```mermaid
-flowchart TD
-    S[A command or script<br/>wants After Effects] --> L{Someone else<br/>driving it?}
-    L -- yes --> W[Wait for driver.lock,<br/>then say who holds it]
-    L -- no --> A{After Effects<br/>running?}
-    A -- no --> N[Stop: ae-not-running<br/>nothing is launched]
-    A -- yes --> G{A dialog<br/>open?}
-    G -- "plain message, AE in background,<br/>auto-close on" --> K[Close it: OK, the only<br/>safe button, or Escape]
-    K --> RUN
-    G -- "a form, AE in front,<br/>or auto-close off" --> O[Stop: dialog-open<br/>with its text and buttons]
-    G -- none --> RUN[Run with alerts suppressed]
-    RUN --> E{Result}
-    E -- script error --> T[Error comes back as text<br/>with the line number]
-    E -- blocked by a modal --> O
-    E -- ok --> V[Value returned,<br/>shown in the panel]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/guard-dark.svg">
+  <img alt="Before every step the guard checks that After Effects is open, that nobody else is using it and that no popup is in the way, then runs the step with popups switched off" src="docs/media/guard-light.svg" width="100%">
+</picture>
 
-- `driver.lock` in the bridge folder lets only one client drive After Effects at a time; a lock whose process has died is taken over.
-- Script errors never leave an alert behind: every command runs with dialogs suppressed and returns the error as text.
-- `get-ae-status` tells apart "busy rendering", "waiting in a dialog", "panel closed" and "panel timer stopped", from outside After Effects, using the window list, Accessibility and a main-thread sample.
-- Closing dialogs is off by default. When enabled, it only closes plain message boxes, never a dialog with fields, popups or sliders, never while After Effects is the front app, and never presses Reset, Safe Mode, Don't Save, Delete, Quit, Replace, Revert or Discard.
-- `ae-do` runs `.jsx` files through the same guard for scripts and tools outside the MCP server.
+- Only one agent drives After Effects at a time (`driver.lock`).
+- Closing popups is off by default. When on, it only closes plain messages, never a settings window, never while After Effects is in front, and never presses buttons like Delete, Don't Save or Quit.
+- `get-ae-status` tells you what After Effects is doing: rendering, waiting in a popup, or panel closed.
+- `ae-do` runs your own `.jsx` files through the same checks.
 
 Setup, the states and the settings: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-ae-guard).
 
@@ -189,12 +153,6 @@ Every error code and what to do: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.
 ## Contributing
 
 How to add a tool, the ES3 rules and the shared API: [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md). Judgement calls made during the rewrite: [docs/DECISIONS.md](docs/DECISIONS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
-
-## Credits
-
-- The server started as a fork of [TheLlamainator/after-effects-mcp](https://github.com/TheLlamainator/after-effects-mcp), which built on [Dakkshin/after-effects-mcp](https://github.com/Dakkshin/after-effects-mcp). Both are MIT licensed; the license file is kept.
-- The Edge Glow and Power Warp Transition panels recreate looks from public After Effects tutorials (the Power Warp technique by VideoLancer) by frame analysis; the Depth Map Blur Reveal and Blur Color Reveal panels recreate reference reels.
-- Libraries: `@modelcontextprotocol/sdk`, `zod`, `pngjs`, `acorn`, `vitest`, `typescript`.
 
 ## License
 

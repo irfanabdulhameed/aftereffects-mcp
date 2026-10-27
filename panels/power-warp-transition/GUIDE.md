@@ -10,7 +10,7 @@ Connect with me → [LinkedIn](http://www.linkedin.com/in/irfan-abdul-hameed-a81
 
 ---
 
-A one-click After Effects panel that recreates VideoLancer's **depth-map "Power Warp Transition"**. You point it at three layers (outgoing clip, incoming clip, depth map) and it builds the entire rig, depth-driven gradient wipe, glowing scan-line, pseudo-3D shake, CC-Glass warp, chromatic aberration and fine distortions, fully keyframed and trimmed to the transition window.
+A one-click After Effects panel that builds a **depth-map "Power Warp Transition"**. You point it at three layers (outgoing clip, incoming clip, depth map) and it builds the entire rig, depth-driven gradient wipe, glowing scan-line, pseudo-3D shake, CC-Glass warp, chromatic aberration and fine distortions, fully keyframed and trimmed to the transition window.
 
 > **The only thing it can't do for you is generate the depth map**, that needs Photoshop's Neural Filters (see [§3](#3-make-a-depth-map-the-one-manual-prerequisite)). Everything else is automatic.
 
@@ -75,7 +75,7 @@ You can't hand-make a map per frame, so automate it:
 | **Depth map** | Grayscale depth pass of clip A. Drives every module. **Required.** |
 | **Start (sec)** | When the transition begins. **Use playhead as Start** copies the current time. |
 | **Duration (s)** | Length of the transition (≈1.0–2.0 s looks best). |
-| **Intensity** | Master multiplier for distortion strength. `0.5` subtle … `1.0` matches the tutorial … `2.0` extreme. |
+| **Intensity** | Master multiplier for distortion strength. `0.5` subtle … `1.0` default … `2.0` extreme. |
 | **Scan color** | RGB (0–255) of the glowing depth scan-line. Default is electric blue `0 / 90 / 255`. |
 | **Modules** | Toggle individual layers on/off (Gradient Wipe is always on). |
 
@@ -105,14 +105,14 @@ The five transition layers are **trimmed to the Start→Duration window**, so th
 
 - **Preview is slow / heavy.** This is a stack of CC Glass + Vector Blur + Turbulent Noise, normal. Lower comp resolution to 1/2 while designing; turn off modules you don't need.
 - **Warp/scan looks flat or wrong.** Open the **Warp Map** layer's **CC Glass → Bump Map** (and the Gradient Wipe's **Gradient Layer**) and confirm the small dropdown beside the layer reads **"Effects & Masks"** (maps) / **"Source"** (gradient wipe). Scripting can't always set that secondary menu, so it's the one thing worth eyeballing.
-- **A module did nothing.** A few effect dropdowns (e.g. CC Glass *Property*, Glow *Operation*) are set by best-guess index and silently fall back to defaults if your AE numbers them differently, the look still holds; nudge them by hand if you want the exact tutorial value (they're listed in §7).
+- **A module did nothing.** A few effect dropdowns (e.g. CC Glass *Property*, Glow *Operation*) are set by best-guess index and silently fall back to defaults if your AE numbers them differently, the look still holds; nudge them by hand if you want the exact default value (they're listed in §7).
 - **The depth wipe goes the wrong direction.** Toggle **Invert Gradient** on the outgoing clip's **Gradient Wipe**, or invert your depth map.
 - **Hard pop at the start/end.** Increase **Duration**, or check the depth map has smooth tonal range (a hard black/white map gives an abrupt wipe).
 - **Re-use as a template.** After one good build, you can also **save the whole comp as a template project** or select the transition layers and **Animation → Save Animation Preset** for the single-layer pieces.
 
 ---
 
-## 7. Reference, exact tutorial values baked in
+## 7. Reference, default values baked in
 
 All values live in the `SPEC` object at the top of the `.jsx`, so you can edit them once and every build inherits the change:
 
@@ -128,4 +128,4 @@ All values live in the `SPEC` object at the top of the `.jsx`, so you can edit t
 
 ---
 
-*Recreated by frame analysis of the VideoLancer "Power Warp Transition" tutorial for your own production use. The script uses only stock + bundled (CC) After Effects effects, no third-party plugins required.*
+*The script uses only stock + bundled (CC) After Effects effects, no third-party plugins required.*

@@ -9,7 +9,7 @@
 
 A one-click After Effects panel that recreates the **Edge Glow** look: a rounded-rectangle outline with a glowing 4-colour gradient edge, an animated light sweep travelling around it, and a soft coloured halo blooming behind, finished with Deep Glow. Point it at a comp (or let it make one) and it builds the whole rig in a single Undo group.
 
-This is the exact rig from the tutorial, parameterised so you can re-skin it (size, colours, glow strength, sweep speed) without rebuilding anything by hand.
+This is the full rig, parameterised so you can re-skin it (size, colours, glow strength, sweep speed) without rebuilding anything by hand.
 
 ---
 
@@ -52,7 +52,7 @@ Top → bottom in the comp:
 | **EG Glow** | the coloured halo (sent to the bottom) | 3 × Drop Shadow (red / blue / white) |
 | **EG Background** *(optional)* | black backdrop |, |
 
-How it maps to the tutorial:
+How it is built:
 
 - **CC Light Sweep**, Sweep Intensity `0`, **Edge Intensity `100`**, Edge Thickness `4`, white light, **Light Reception = Cutout**, Center pinned to the rectangle. Animated with the expression `time * speed` on **Direction**.
 - **4-Color Gradient**, the four points are pinned to the rectangle's corners. **Corners 1 & 3 = Gradient A**, **corners 2 & 4 = Gradient B**, so the rim reads as a smooth A→B sweep.
@@ -63,7 +63,7 @@ How it maps to the tutorial:
 
 ## 4. Controls
 
-| Control | What it does | Tutorial value |
+| Control | What it does | Default |
 |---|---|---|
 | **Size W × H** | rectangle dimensions | 718 × 142 |
 | **Roundness** | corner radius | 28 |
@@ -84,7 +84,7 @@ Change **Size** and everything re-pins automatically, the gradient corners and t
 
 ## 5. Tips & troubleshooting
 
-- **No "Deep Glow" plugin?** The script falls back to built-in **Glow** automatically, close, but install Plugin Everything's **Deep Glow** for the exact tutorial bloom.
+- **No "Deep Glow" plugin?** The script falls back to built-in **Glow** automatically, close, but install Plugin Everything's **Deep Glow** for the full bloom.
 - **Halo too strong / weak?** Raise or lower **Halo distance** & **softness**. Want it more saturated? Push the three halo colours.
 - **`Light Reception` didn't switch to "Cutout"?** A few AE builds block scripting popup menus, set it by hand on **CC Light Sweep** if needed.
 - **Edge looks flat?** Increase **Edge intensity**, or widen the **Sweep width**.

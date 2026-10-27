@@ -12,8 +12,8 @@ Date: 2026-09-14. Everything below was verified by reading every file and buildi
 ├── Edge Glow/                    builder panel (.jsx + GUIDE.md)
 ├── Power Warp Transition/        builder panel (.jsx + GUIDE.md)
 └── ae-mcp-setup/
-    ├── README.md                 setup guide, still links to the upstream repository
-    ├── setup-mac.sh              clones the upstream repository, ignores the vendored copy
+    ├── README.md                 setup guide, still links to another repository
+    ├── setup-mac.sh              clones another repository, ignores the copy in this one
     ├── setup-windows.ps1         same bug
     └── after-effects-mcp/
         ├── HOW-TO-USE.txt        contains another person's Windows username and paths
@@ -118,9 +118,9 @@ Resource: `aftereffects://compositions`. Kept and joined by six more in Phase 4.
 13. `index.ts` and every `.jsx` start with a UTF-8 byte order mark.
 14. `list-presets` searches Windows `Program Files` roots and never the Mac application bundle.
 15. The `JSON` shim is defined after the command functions but before they run, which works, but `JSON.stringify` in the shim ignores the `space` argument, and the shim has no `Object.keys`, `Array.prototype.indexOf` or `String.prototype.trim` polyfills. ES3 helpers are missing.
-16. Both setup scripts run `git clone https://github.com/TheLlamainator/after-effects-mcp.git`, so setup installs the upstream code and ignores every change in this repository.
+16. Both setup scripts clone another repository, so setup installs that code and ignores every change in this one.
 17. `HOW-TO-USE.txt` contains another person's Windows user folder in its paths.
-18. README files describe and link to upstream.
+18. README files describe and link to another repository.
 19. No tests, no lint, no continuous integration, no ES3 check for the ExtendScript side.
 20. Four panels are loose at the root with spaces in folder names. Their `.jsx` files contain no em dashes; their `GUIDE.md` files do.
 

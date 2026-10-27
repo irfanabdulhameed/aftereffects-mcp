@@ -58,7 +58,7 @@ Call `see-frames` with `{ "comp": { "name": "Bumper" }, "frames": [0, 8, 14, 24]
 
 Call `set-effect-property` on "EG Glow" to reduce the third Drop Shadow's Opacity, then `see-frame` at frame 24. Balanced.
 
-**Agent:** Done. The Edge Glow badge (760 by 180, pink to purple, animated sweep) sits behind "Logo", which scales from 80 percent with an overshoot and fades in over 12 frames. Deep Glow is not installed, so the rig used the built-in Glow; install Deep Glow and rerun the rig for the exact tutorial bloom. Contact sheet attached.
+**Agent:** Done. The Edge Glow badge (760 by 180, pink to purple, animated sweep) sits behind "Logo", which scales from 80 percent with an overshoot and fades in over 12 frames. Deep Glow is not installed, so the rig used the built-in Glow; install Deep Glow and rerun the rig for the full bloom. Contact sheet attached.
 
 ## What to notice
 

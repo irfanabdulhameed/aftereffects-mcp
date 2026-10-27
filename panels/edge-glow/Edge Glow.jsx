@@ -4,7 +4,7 @@
  *  Recreates the "Edge Glow" look (glowing gradient-rimmed rounded rectangle with an animated
  *  light sweep and a soft coloured halo) as a one-click rig.
  *
- *  WHAT IT BUILDS  (exactly what the tutorial does, in one click)
+ *  WHAT IT BUILDS  (the whole rig, in one click)
  *    Three shape layers, top -> bottom:
  *        1. EG Stroke   : rounded-rect OUTLINE (no fill) carrying the glowing edge.
  *                         - CC Light Sweep   (edge intensity 100, cutout, animated sweep)
@@ -27,11 +27,11 @@
     var VERSION     = "1.0";
 
     /* =========================================================================================
-     *  SPEC  -  every number lifted from the tutorial, in one place so it is easy to tweak.
+     *  SPEC  -  every number in one place so it is easy to tweak.
      * =======================================================================================*/
     var SPEC = {
         comp        : { w: 1920, h: 1080, fps: 30, dur: 10 },     // used only when no comp is open
-        rect        : { w: 718, h: 142, round: 28, strokeW: 3 },  // tutorial rectangle
+        rect        : { w: 718, h: 142, round: 28, strokeW: 3 },  // default rectangle
         lightSweep  : { width: 88, edgeThickness: 4, edgeIntensity: 100, sweepIntensity: 0,
                         speed: 50 },                               // Direction = time * speed
         gradient    : { blend: 100, jitter: 0, opacity: 100 },
@@ -244,7 +244,7 @@
         "WHAT IT DOES",
         "Builds the 'Edge Glow' look in one click: a rounded-rectangle outline with a glowing",
         "4-colour gradient edge, an animated CC Light Sweep, a soft coloured drop-shadow halo,",
-        "and Deep Glow on top -- exactly the rig from the tutorial. Re-runnable on any comp.",
+        "and Deep Glow on top -- the full rig. Re-runnable on any comp.",
         "",
         "==============================  QUICK START  ==============================",
         "1.  (Optional) open the comp you want the badge in. No comp open? It makes one.",
@@ -262,19 +262,19 @@
         "EG Background (optional) -- a black solid behind everything.",
         "",
         "==============================  CONTROLS  =================================",
-        "Width / Height / Roundness / Stroke -- the rectangle shape. Tutorial: 718 x 142, r28, 3px.",
+        "Width / Height / Roundness / Stroke -- the rectangle shape. Default: 718 x 142, r28, 3px.",
         "Gradient A / B   -- the two edge colours. A fills corners 1 & 3, B fills corners 2 & 4.",
         "Fill colour      -- the inner panel colour (black by default).",
         "Shadow 1/2/3     -- the three halo colours that bloom outward (red / blue / white).",
-        "Shadow distance/softness -- spread of the halo (100 / 525 in the tutorial).",
+        "Shadow distance/softness -- spread of the halo (default 100 / 525).",
         "Sweep width      -- thickness of the moving highlight along the edge.",
-        "Edge intensity   -- brightness of the swept edge (100 = tutorial).",
+        "Edge intensity   -- brightness of the swept edge (100 = default).",
         "Animate + speed  -- adds the expression 'time * speed' to the sweep Direction.",
         "Add black background -- drop a black solid under everything (on by default for new comps).",
         "",
         "========================  TIPS & TROUBLESHOOTING  =========================",
         "- No 'Deep Glow' plugin?  The script auto-falls back to AE's built-in Glow -- the look",
-        "  is close. Install Plugin Everything's Deep Glow for the exact tutorial bloom.",
+        "  is close. Install Plugin Everything's Deep Glow for the full bloom.",
         "- Halo too strong / weak?  Raise or lower Shadow distance & softness, or shadow opacity.",
         "- Light Reception popup didn't switch to 'Cutout'?  Set it by hand on CC Light Sweep",
         "  (scripting can't always move popup menus on every AE build).",
