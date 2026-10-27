@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0 (2026-10-27)
+
+36 new tools, 229 in all.
+
+- Components and templates (9): create-component, add-essential-property, list-essential-properties, set-component-values, add-component-instances, set-responsive-time, export-component-template, list-library-components, insert-library-component.
+- Animation shortcuts (9): animate-property, add-entrance, add-exit, typewriter-text, word-by-word-reveal, press, move-along-path, play-at-markers, add-camera-push. Few eased keyframes, text animators and expressions; never a key on every frame.
+- Layer styles (4): add-layer-style, set-layer-style, remove-layer-style, list-layer-styles.
+- Project check (4): audit-composition, purge-caches, save-version, organize-project.
+- Shapes (3): import-vector-as-shapes, set-shape-gradient, shape-from-svg-path (SVG path data parsed on the server).
+- Text (4): set-text-on-path, set-per-character-3d, add-text-box, fit-text-to-box.
+- Camera, lights and 3D (3): set-composition-renderer, set-extrusion, add-environment-light.
+- Fixes: apply-preset now selects only its layer (After Effects applies presets to the selected layers); the "outline" effect template adds its Stroke style through the layer-styles code; property serializers never read a shape gradient's colour stops, which raises a dialog scripts cannot catch.
+
 ## 2.1.0 (2026-10-27)
 
 The AE guard: After Effects keeps running through long and unattended sessions on macOS.

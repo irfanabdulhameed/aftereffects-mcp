@@ -5,7 +5,7 @@ description: Drive Adobe After Effects through the AfterEffectsMCP server. Use w
 
 # After Effects MCP
 
-The `AfterEffectsMCP` server exposes about 190 tools that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
+The `AfterEffectsMCP` server exposes about 230 tools that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
 
 ## Before anything
 
@@ -19,7 +19,8 @@ The `AfterEffectsMCP` server exposes about 190 tools that build and edit inside 
 3. Plan every step and name every layer you will create.
 4. Build with one `batch` (steps of tool name plus args) so it is one round-trip and one undo.
 5. `see-frame` at two or three times and look at the image.
-6. Fix, `see-frame` again, then `save-project` if asked.
+6. `audit-composition` before showing the work: fix every error it reports (frame-by-frame keys, loose layers, broken expressions, missing fonts or footage).
+7. Fix, `see-frame` again, then `save-version` or `save-project` if asked.
 
 Report done only after you have looked at a frame.
 
@@ -44,6 +45,18 @@ Seconds in `time`, integer `frame` wins when both are given. Pixels with origin 
 - Loops and secondary motion are expressions: `apply-expression-preset` (`loop-out-cycle`, `wiggle`, `inertia-bounce`).
 - Controls for the human go on a null with `add-expression-control`.
 - Per-character text motion is `add-text-animator`, never keyframed transforms.
+- Never a key on every frame. Use the shortcuts: `animate-property` (one eased move), `add-entrance` and `add-exit` (with stagger), `typewriter-text` (with cursor), `word-by-word-reveal`, `press` (button click), `move-along-path`, `play-at-markers` (one animation replayed at each marker), `add-camera-push`.
+
+## Components
+
+Every repeated UI object is one component: `create-component` precomposes it and exposes its controls as Essential Properties, `set-component-values` changes one copy, `add-component-instances` places many, `set-responsive-time` keeps intros and outros at speed when a copy is stretched. `list-library-components` and `insert-library-component` reuse saved components; `export-component-template` writes a .mogrt.
+
+## Styles, text, vectors, 3D
+
+- Shadows, glows and outlines are layer styles (`add-layer-style`), not extra layers.
+- `add-text-box` puts a box or pill behind text that resizes with it; `set-text-on-path`, `set-per-character-3d`, `fit-text-to-box`.
+- `import-vector-as-shapes` for .svg and .ai art, `shape-from-svg-path` for icon path data, `set-shape-gradient` for gradients (colour stops need `allowClipboard`, which takes the screen).
+- Extruded text and shapes: `set-composition-renderer` (Advanced 3D), then `set-extrusion`; `add-environment-light` for image lighting.
 
 ## Effects
 
@@ -60,6 +73,7 @@ Seconds in `time`, integer `frame` wins when both are given. Pixels with origin 
 - Wrong result: `undo`, `list-layers`, retry.
 - Expression error in a result: fix the code and set it again.
 - Never use `run-extendscript` when a tool exists; it is off by default.
+- After Effects slow or stuck: `get-ae-status`; `purge-caches` when memory is high.
 
 ## Style file
 

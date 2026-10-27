@@ -82,7 +82,7 @@ export function registerGuardTools(server: McpServer): void {
     bridge: null,
     description:
       'Reports what After Effects is doing, read from outside it, so it works even when After Effects is stuck: not-running, dialog (with its text and buttons), running-command, running-script, busy, idle, paused, panel-stalled or panel-closed; plus its memory footprint, swap, free disk, the driver lock holder, recent DoScript runs and advice. ' +
-      'Use when: a tool timed out or failed with dialog-open, panel-not-running or ae-busy; before a long unattended build; or to see whether another chat is driving After Effects. ' +
+      'Use when: a tool timed out or failed with dialog-open, panel-not-running or ae-busy; before a long unattended build; or to see whether another client is driving After Effects. ' +
       'Do not use for: project contents (use get-project-info). ' +
       'Inputs: deep (default false) also samples After Effects\' main thread for about 3 seconds, which tells a modal dialog from a running script even when the dialog is on another desktop. ' +
       'Returns: state, summary, ae {pid, app, uptimeMin}, memory {aeFootprintGB, swapUsedGB, swapTotalGB, diskFreeGB}, panel {heartbeatAgeMs, fresh, version, state, running, autoRun, pollMs, project}, lock, external {running, recent}, dialogs, windowScan, mainThread, advice. ' +

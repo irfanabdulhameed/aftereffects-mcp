@@ -12,7 +12,19 @@ MCP.register("applyPreset", function (args) {
     var fxg = _mcpTry(function () { return r.layer.property("ADBE Effect Parade"); }, null);
     var i;
     if (fxg) { for (i = 1; i <= fxg.numProperties; i++) { before.push(fxg.property(i).name); } }
-    r.layer.applyPreset(file);
+    // applyPreset acts on the selected layers of the comp (or makes a new solid when none is
+    // selected), so select only the target layer while it runs, then restore the selection.
+    var selected = [];
+    for (i = 1; i <= r.comp.numLayers; i++) {
+        if (r.comp.layer(i).selected) { selected.push(r.comp.layer(i)); r.comp.layer(i).selected = false; }
+    }
+    r.layer.selected = true;
+    try {
+        r.layer.applyPreset(file);
+    } finally {
+        r.layer.selected = false;
+        for (i = 0; i < selected.length; i++) { try { selected[i].selected = true; } catch (eSel) {} }
+    }
     var added = [];
     if (fxg) {
         for (i = before.length + 1; i <= fxg.numProperties; i++) { added.push(MCP.serialize.effect(fxg.property(i))); }

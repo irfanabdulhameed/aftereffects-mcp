@@ -282,8 +282,22 @@ MCP.serialize.keyframedPaths = function (root) {
     return found;
 };
 
+/**
+ * Properties whose value must never be read by script: a shape gradient's colour stops
+ * ("ADBE Vector Grad Colors") raise a modal error that try/catch does not catch, and other
+ * custom-value properties have no readable value. Serializers report them without a value.
+ */
+MCP.serialize.valueUnreadable = function (prop) {
+    var mn = _mcpTry(function () { return prop.matchName; }, "");
+    if (mn === "ADBE Vector Grad Colors") { return true; }
+    var t = _mcpTry(function () { return prop.propertyValueType; }, null);
+    var custom = _mcpTry(function () { return PropertyValueType.CUSTOM_VALUE; }, undefined);
+    return custom !== undefined && t === custom;
+};
+
 MCP.serialize.value = function (prop) {
     if (!prop || MCP.isGroup(prop)) { return null; }
+    if (MCP.serialize.valueUnreadable(prop)) { return null; }
     var v = null;
     try { v = prop.value; } catch (e) { return null; }
     return MCP.serialize.rawValue(v);
@@ -375,7 +389,12 @@ MCP.serialize.property = function (prop, opts) {
     }
     out.value = MCP.serialize.value(prop);
     out.valueType = MCP.serialize.valueTypeName(prop);
-    out.dimensions = _mcpTry(function () { var v = prop.value; return MCP.isArray(v) ? v.length : 1; }, 1);
+    if (MCP.serialize.valueUnreadable(prop)) {
+        out.valueUnreadable = true;
+        out.dimensions = 1;
+    } else {
+        out.dimensions = _mcpTry(function () { var v = prop.value; return MCP.isArray(v) ? v.length : 1; }, 1);
+    }
     out.canVaryOverTime = _mcpTry(function () { return !!prop.canVaryOverTime; }, false);
     out.isSpatial = _mcpTry(function () { return !!prop.isSpatial; }, false);
     out.numKeys = _mcpTry(function () { return prop.numKeys; }, 0);
@@ -387,7 +406,7 @@ MCP.serialize.property = function (prop, opts) {
     }
     if (_mcpTry(function () { return prop.hasMin; }, false)) { out.min = prop.minValue; }
     if (_mcpTry(function () { return prop.hasMax; }, false)) { out.max = prop.maxValue; }
-    if (o.keyframes && out.numKeys > 0) {
+    if (o.keyframes && out.numKeys > 0 && !out.valueUnreadable) {
         out.keyframes = [];
         for (var k = 1; k <= prop.numKeys; k++) { out.keyframes.push(MCP.serialize.keyframe(prop, k)); }
     }

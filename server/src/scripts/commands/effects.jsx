@@ -544,17 +544,16 @@ MCP.effectTemplates["outline"] = {
     description: "Stroke layer style around the layer's alpha (not an effect; it appears under Layer Styles).",
     params: { size: { "default": 4, description: "Pixels." }, color: { "default": "#FFFFFF", description: "Stroke colour." }, opacity: { "default": 100, description: "Percent." } },
     build: function (layer, p, comp, notes) {
-        var styles = _mcpTry(function () { return layer.property("ADBE Layer Styles"); }, null);
-        if (!styles) { MCP.fail("Layer styles are not available on this layer.", "unsupported"); }
-        var st = null;
-        try { if (styles.canAddProperty("frameFX/enabled")) { st = styles.addProperty("frameFX/enabled"); } } catch (e) { st = null; }
-        if (!st) { st = _mcpTry(function () { return styles.property("frameFX/enabled"); }, null); }
-        if (!st) { MCP.fail("Could not add a Stroke layer style by script in this After Effects version. Use Layer > Layer Styles > Stroke.", "unsupported"); }
-        try { st.enabled = true; } catch (e2) {}
-        MCP.fx.setBy(st, "frameFX/size", _mcpTemplateParam(p, "size", 4), notes);
-        MCP.fx.setBy(st, "frameFX/color", MCP.color.rgba(_mcpTemplateParam(p, "color", "#FFFFFF")), notes);
-        MCP.fx.setBy(st, "frameFX/opacity", _mcpTemplateParam(p, "opacity", 100), notes);
-        return [st];
+        // Layer styles cannot be added with addProperty; the styles group knows the working routes.
+        var res = MCP.styles.addToLayers(comp, [layer], "stroke", {
+            size: _mcpTemplateParam(p, "size", 4),
+            color: MCP.color.rgba(_mcpTemplateParam(p, "color", "#FFFFFF")),
+            opacity: _mcpTemplateParam(p, "opacity", 100)
+        }, { useDefaults: false, allowMenu: true });
+        var r0 = res.results[0];
+        if (!r0 || r0.status !== "ok") { MCP.fail("Could not add a Stroke layer style: " + (r0 ? r0.error : "no result") + " Use add-layer-style with kind stroke.", (r0 && r0.code) || "unsupported"); }
+        for (var i = 0; i < r0.notes.length; i++) { notes.push(r0.notes[i]); }
+        return [];
     }
 };
 MCP.effectTemplates["chromatic-aberration"] = {

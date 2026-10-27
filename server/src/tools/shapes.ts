@@ -85,7 +85,7 @@ export function registerShapeTools(server: McpServer): void {
       'Use when: recolouring a card or icon, fading a shape\'s fill, or turning a flat fill into a gradient. Do not use for: strokes (set-shape-stroke) or text colour (set-text-style). ' +
       'Inputs: layer; group by name or index (default the first group); color; opacity in percent; fillRule "non-zero" or "even-odd"; gradient {type "linear" or "radial", start [x, y], end [x, y], stops[] of {position 0 to 1, color}}. ' +
       'Returns: the fill property path, its current values, the fields changed and warnings. ' +
-      'Notes: After Effects scripting cannot write gradient colour stops, so stops are accepted but reported in warnings and left at the default; set them in the Gradient Editor. Requesting a gradient replaces a solid fill and vice versa. Undoable in one step. ' +
+      'Notes: this tool cannot write gradient colour stops, so stops are accepted but reported in warnings and left at the default; use set-shape-gradient to set them. Requesting a gradient replaces a solid fill and vice versa. Undoable in one step. ' +
       'Example: layer {name: "Card"}, color "#1e90ff", opacity 85.',
     input: {
       comp: CompRef.optional(),
@@ -99,7 +99,7 @@ export function registerShapeTools(server: McpServer): void {
           type: z.enum(['linear', 'radial']).optional().describe('Default linear.'),
           start: Vec2.optional().describe('Start point in group pixels.'),
           end: Vec2.optional().describe('End point in group pixels.'),
-          stops: z.array(z.object({ position: z.number().min(0).max(1), color: Color })).optional().describe('Colour stops. Not writable by scripting; reported in warnings.'),
+          stops: z.array(z.object({ position: z.number().min(0).max(1), color: Color })).optional().describe('Colour stops. Not written by this tool (use set-shape-gradient); reported in warnings.'),
         })
         .optional(),
     },

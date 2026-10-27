@@ -8,8 +8,11 @@ What sets it apart from other After Effects servers:
 - Self-verification: `see-frame` and `see-frames` return PNG frames so the agent looks at its own work before reporting.
 - Rig tools: the four studio rigs (edge glow, power warp transition, depth map blur reveal, blur colour reveal) as one-call tools with every parameter.
 - A style file: pin house durations, easings, text styles and colours, and reference them as `@style.entrance` or `@style.h1`.
-- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 193 tools uses them well.
+- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 229 tools uses them well.
 - Idempotent effects, real text animators, one easing model for every keyframe, and every command undoable in one step.
+- Components: turn layers into reusable parts with a simple controls list (Essential Properties), place many copies with different text and colours, save them as templates or a library.
+- Animation shortcuts built the way an animator builds them: few eased keyframes, text animators and expressions, never a key on every frame.
+- A project check that flags frame-by-frame keys, loose layers, broken expressions and missing fonts or footage before anyone sees the work.
 - A guard for unattended runs (macOS): one driver at a time, script errors returned as text instead of alerts, stuck dialogs and stalled panels detected from outside After Effects, and nothing ever brought to the front.
 
 ## How it works
@@ -65,6 +68,9 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 - "Type on this headline at 15 characters per second with a typewriter animator."
 - "Loop this clip with time remapping and add a wiggle to the camera."
 - "Find every broken expression in the project and list them."
+- "Make this button a component with Label and Fill controls and place three copies with different labels."
+- "Type the prompt on at 20 characters per second with a blinking cursor, then press the Send button."
+- "Check the comp for anything built frame by frame before I look at it."
 - "Read the timing from the reference comp and rebuild the lower third in our style file."
 
 ## Tool overview
@@ -77,16 +83,20 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 | Transform and properties | 7 | get and set any property, transform, anchor point, fit, bounds |
 | Keyframes | 14 | bulk and multi writes, easing, move, copy, reverse, bake, stagger |
 | Expressions | 8 | set, errors, 21 presets, expression controls |
-| Text | 13 | style, fonts, 12 text animator presets, selectors, outlines, boxes |
-| Shapes | 9 | create, add, fill, stroke, path, modifiers, trim paths, repeater |
+| Text | 17 | style, fonts, 12 text animator presets, selectors, outlines, boxes, text on a path, 3D per letter, a box that grows with its text, fit text to a box |
+| Shapes | 12 | create, add, fill, stroke, path, modifiers, trim paths, repeater, SVG and Illustrator import as shapes, gradient fills and strokes, SVG path data |
 | Masks | 7 | create, edit, keyframe, from shape, reveal animation |
 | Effects and presets | 19 | apply (idempotent), bulk, inspect, set, keyframe, copy, 33 templates, .ffx presets |
-| Camera, lights, 3D | 6 | camera settings, camera moves, lights, materials, look at |
+| Camera, lights, 3D | 9 | camera settings, camera moves, lights, materials, look at, Advanced 3D renderer, extrusion and bevels, environment light |
 | Time | 7 | time remap, freeze, speed, reverse, blending, loop |
 | Markers and audio | 10 | markers, waveform analysis, audio to keyframes, beat grids |
 | Render and preview | 10 | see-frame, contact sheets, render queue, aerender, stills |
 | Rigs | 5 | the four panels as tools |
 | Batch, workflow, utilities | 17 | batch, undo, status, snapshots, find, replace, relink |
+| Components and templates | 9 | make a component with Essential Properties, set each copy's values, place many copies, responsive timing, .mogrt export, a component library |
+| Animation shortcuts | 9 | move a property, entrances and exits with stagger, typewriter with cursor, word-by-word reveal, button press, move along a path, replay at markers, camera push |
+| Layer styles | 4 | drop shadow, glows, bevel, satin, colour and gradient overlay, stroke |
+| Project check | 4 | construction audit, clear caches, save a numbered version, sort the project into folders |
 | AE guard (macOS) | 4 | status, dialogs, panel reload and re-arm |
 
 Every tool with its inputs and an example: [docs/TOOLS.md](docs/TOOLS.md) (generated). How an agent should work with them: [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md).
