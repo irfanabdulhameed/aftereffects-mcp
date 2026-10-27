@@ -45,7 +45,8 @@ describe('vector tools: registration', () => {
 });
 
 describe('import-vector-as-shapes', () => {
-  it('converts an .ai file and returns the shape layer with its groups', async () => {
+  // POSIX paths in the expectations.
+  it.skipIf(process.platform === 'win32')('converts an .ai file and returns the shape layer with its groups', async () => {
     const r = await callTool(client, 'import-vector-as-shapes', { path: '/art/logo.ai', removeSource: true, position: [400, 300] });
     expect(r.isError).toBe(false);
     expect(r.json).toMatchObject({ route: 'create-shapes', file: '/art/logo.ai', sourceRemoved: true });

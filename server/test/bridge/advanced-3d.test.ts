@@ -106,7 +106,8 @@ describe('add-environment-light', () => {
     expect((yes.json.notes as string[])[0]).toMatch(/switched/);
   });
 
-  it('expands ~ in sourceFile and accepts [x, y, z] rotation', async () => {
+  // POSIX paths in the expectations.
+  it.skipIf(process.platform === 'win32')('expands ~ in sourceFile and accepts [x, y, z] rotation', async () => {
     await callTool(client, 'set-composition-renderer', { renderer: 'advanced-3d' });
     const r = await callTool(client, 'add-environment-light', { sourceFile: '~/hdri/sky.exr', rotation: [10, 20, 30] });
     expect(r.json).toMatchObject({ rotation: { x: 10, y: 20, z: 30 }, source: { layer: { name: 'sky.exr' }, hdr: true } });

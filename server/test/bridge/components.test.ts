@@ -357,7 +357,8 @@ describe('component tools through the MCP server and the mock bridge', () => {
 });
 
 describe('component helpers', () => {
-  it('splitTemplatePath handles .mogrt files, folders and relative paths', () => {
+  // POSIX paths in the expectations.
+  it.skipIf(process.platform === 'win32')('splitTemplatePath handles .mogrt files, folders and relative paths', () => {
     expect(splitTemplatePath('/tmp/out/Lower Third.mogrt')).toEqual({ folder: '/tmp/out', templateName: 'Lower Third', file: '/tmp/out/Lower Third.mogrt' });
     expect(splitTemplatePath('/tmp/out/x.mogrt', 'Named')).toMatchObject({ folder: '/tmp/out', templateName: 'Named', file: '/tmp/out/Named.mogrt' });
     expect(splitTemplatePath('/tmp/out')).toEqual({ folder: '/tmp/out', templateName: undefined, file: null });
