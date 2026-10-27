@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>English</string>
+    <key>CFBundleExecutable</key><string>AE MCP Live View</string>
+    <key>CFBundleIdentifier</key><string>com.aftereffects-mcp.liveview</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>AE MCP Live View</string>
+    <key>CFBundlePackageType</key><string>AEgx</string>
+    <key>CFBundleSignature</key><string>FXTC</string>
+    <key>CFBundleShortVersionString</key><string>@LV_VERSION@</string>
+    <key>CFBundleVersion</key><string>@LV_VERSION@</string>
+    <key>LSMinimumSystemVersion</key><string>11.0</string>
+</dict>
+</plist>

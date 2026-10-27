@@ -114,6 +114,7 @@ MCP.writeHeartbeat = function (force) {
     var queueLength = MCP.queueFiles().length;
     MCP.refreshQueue(queueLength);
     MCP.refreshDriver();
+    MCP.refreshLive();
     var hb = {
         at: new Date().toISOString(),
         aeVersion: app.version,
@@ -428,6 +429,30 @@ MCP.refreshDriverUi = function () {
     } catch (e) {}
 };
 
+/** Live row: state of the AE MCP Live View plug-in from <bridge>/live/status.json. */
+MCP.refreshLive = function () {
+    if (!MCP.ui || !MCP.ui.rowLive) { return; }
+    var text = "plug-in not installed";
+    try {
+        var raw = MCP.readFile(MCP.paths.root + "/live/status.json");
+        if (raw) {
+            var st = JSON.parse(raw);
+            if (st.enabled === false) {
+                text = "off  ·  v" + st.version;
+            } else {
+                text = "on  ·  " + st.frames + " pictures";
+                var meta = MCP.readFile(MCP.paths.root + "/live/latest.json");
+                if (meta) {
+                    var m = JSON.parse(meta);
+                    text += "  ·  last " + m.comp + " f" + m.frame + "  ·  " + Math.round(m.renderMs) + " ms";
+                }
+                if (st.lastError) { text += "  ·  " + st.lastError; }
+            }
+        }
+        MCP.ui.rowLive.text = text;
+    } catch (e) {}
+};
+
 /* -------------------------------------------------------------------- UI */
 
 (function mcpBridgePanel(thisObj) {
@@ -496,6 +521,7 @@ MCP.refreshDriverUi = function () {
     var rowDriver = row("Driver", "Who is driving After Effects now (driver.lock): one chat at a time.");
     var rowCommand = row("Command", "The last bridge command: name, result, time taken, local time.");
     var rowScript = row("Script", "The last script sent straight to After Effects by ae-do: label, result, time taken, local time.");
+    var rowLive = row("Live", "AE MCP Live View plug-in: keeps a picture of the active comp for Claude (see-live). On/off with live-view-settings.");
     rowDriver.text = "free";
 
     /* Log */
@@ -524,7 +550,7 @@ MCP.refreshDriverUi = function () {
     MCP.ui = {
         win: win, kind: "ready", light: light, status: status, info: info, footer: footer, logText: logText, autoRun: autoRun,
         statQueue: statQueue, statRun: statRun, statScripts: statScripts, statErr: statErr,
-        rowDriver: rowDriver, rowCommand: rowCommand, rowScript: rowScript
+        rowDriver: rowDriver, rowCommand: rowCommand, rowScript: rowScript, rowLive: rowLive
     };
     MCP.logSink = function () {
         try { logText.text = MCP.logLines.slice(0, 80).join("\n"); } catch (e) {}

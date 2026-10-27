@@ -12,6 +12,7 @@ import { registerGuardTools } from './guard.js';
 import { registerHelpTools } from './help.js';
 import { registerKeyframeTools } from './keyframes.js';
 import { registerLayerTools } from './layers.js';
+import { registerLiveViewTools } from './live-view.js';
 import { registerMarkersAudioTools } from './markers-audio.js';
 import { registerMasksTools } from './masks.js';
 import { registerPresetTools } from './presets.js';
@@ -56,6 +57,7 @@ export function registerAllTools(server: McpServer): void {
   registerTimeTools(server);
   registerMarkersAudioTools(server);
   registerRenderTools(server);
+  registerLiveViewTools(server);
   registerRigsTools(server);
   registerWorkflowTools(server);
   registerComponentTools(server);
