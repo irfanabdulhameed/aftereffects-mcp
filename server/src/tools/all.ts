@@ -23,6 +23,13 @@ import { registerTextTools } from './text.js';
 import { registerTimeTools } from './time.js';
 import { registerTransformTools } from './transform.js';
 import { registerWorkflowTools } from './workflow.js';
+import { registerComponentTools } from './components.js';
+import { registerAnimateTools } from './animate.js';
+import { registerStyleTools } from './styles.js';
+import { registerCheckTools } from './check.js';
+import { registerVectorTools } from './vectors.js';
+import { registerTextExtraTools } from './text-extras.js';
+import { registerAdvanced3dTools } from './advanced-3d.js';
 
 export function registerAllTools(server: McpServer): void {
   registerBatchTools(server);
@@ -44,5 +51,12 @@ export function registerAllTools(server: McpServer): void {
   registerRenderTools(server);
   registerRigsTools(server);
   registerWorkflowTools(server);
+  registerComponentTools(server);
+  registerAnimateTools(server);
+  registerStyleTools(server);
+  registerCheckTools(server);
+  registerVectorTools(server);
+  registerTextExtraTools(server);
+  registerAdvanced3dTools(server);
   registerHelpTools(server);
 }

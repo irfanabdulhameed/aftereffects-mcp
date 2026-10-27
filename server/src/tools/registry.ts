@@ -34,6 +34,10 @@ export type ToolGroup =
   | 'batch'
   | 'rigs'
   | 'guard'
+  | 'components'
+  | 'animate'
+  | 'styles'
+  | 'check'
   | 'help';
 
 export interface ToolContext {

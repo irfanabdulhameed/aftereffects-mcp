@@ -21,8 +21,15 @@ import { responses as markersAudio } from './responses/markers-audio.js';
 import { responses as render } from './responses/render.js';
 import { responses as rigs } from './responses/rigs.js';
 import { responses as workflow } from './responses/workflow.js';
+import { responses as components } from './responses/components.js';
+import { responses as animate } from './responses/animate.js';
+import { responses as styles } from './responses/styles.js';
+import { responses as check } from './responses/check.js';
+import { responses as vectors } from './responses/vectors.js';
+import { responses as textExtras } from './responses/text-extras.js';
+import { responses as advanced3d } from './responses/advanced-3d.js';
 
-export const responses = { ...core, ...project, ...composition, ...layers, ...transform, ...keyframes, ...expressions, ...text, ...shapes, ...masks, ...effects, ...camera3d, ...time, ...markersAudio, ...render, ...rigs, ...workflow };
+export const responses = { ...core, ...project, ...composition, ...layers, ...transform, ...keyframes, ...expressions, ...text, ...shapes, ...masks, ...effects, ...camera3d, ...time, ...markersAudio, ...render, ...rigs, ...workflow, ...components, ...animate, ...styles, ...check, ...vectors, ...textExtras, ...advanced3d };
 
 export function respond(command, args, ctx) {
   const fn = responses[command];
