@@ -31,6 +31,7 @@ const GROUP_TITLES = {
   render: 'Render and preview',
   rigs: 'Rigs',
   batch: 'Batch, workflow and utilities',
+  guard: 'AE guard: status, dialogs, panel',
   help: 'Help',
 };
 

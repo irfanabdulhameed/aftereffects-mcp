@@ -88,5 +88,5 @@ One line per judgement call, newest at the bottom. Phase numbers refer to `docs/
 - P5: Tests use vitest; the mock After Effects bridge runs in-process from a temporary folder, and one test tool file per group calls tools through an in-memory MCP client so the full server path is covered.
 - P5: Continuous integration also regenerates `docs/TOOLS.md` on Linux and fails when it differs from the committed file, and greps the tree for em dashes.
 - P6: The panel guides were edited only to remove em dashes, change the title separator to a colon, and add a pointer to the matching rig tool; the panel `.jsx` files remain byte-identical to the originals.
-- P6: `docs/media` holds placeholder stills and a placeholder GIF so the README renders; the README says how to replace them.
+- P6: the placeholder stills and GIF were removed in 2.1.0; real renders replace them when they are recorded.
 - P6: Development happened in a local clone at `/private/tmp/aftereffects-mcp`; the OneDrive working copy is fast-forwarded from GitHub after the final push.

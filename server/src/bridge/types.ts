@@ -56,6 +56,17 @@ export interface BridgeHeartbeat {
   lastCommand: string | null;
   lastCommandAt: string | null;
   projectName: string | null;
+  /** Panel 2.1+: whether Auto-run is on. */
+  autoRun?: boolean;
+  /** Panel 2.1+: "running" while a command executes, "idle" or "paused" otherwise. */
+  state?: 'running' | 'idle' | 'paused';
+  /** Panel 2.1+: the command being executed, with its start time. */
+  running?: { id: string; command: string; startedAt: string } | null;
+  /** Panel 2.1+: when the panel was opened (or hot-reloaded). */
+  panelStartedAt?: string;
+  /** Panel 2.1+: the last command's outcome, for the panel UI and status tools. */
+  lastStatus?: 'ok' | 'error' | null;
+  lastDurationMs?: number | null;
 }
 
 export interface BridgeOptionsFile {
@@ -70,7 +81,11 @@ export type BridgeErrorCode =
   | 'bridge-not-running'
   | 'command-failed'
   | 'invalid-result'
-  | 'disabled';
+  | 'disabled'
+  | 'ae-busy'
+  | 'ae-not-running'
+  | 'dialog-open'
+  | 'panel-not-running';
 
 export class BridgeError extends Error {
   readonly code: BridgeErrorCode;

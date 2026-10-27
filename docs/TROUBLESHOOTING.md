@@ -26,6 +26,10 @@ These come back as `{ "tool": "...", "error": "<code>", "message": "...", ... }`
 | `bridge-not-running` | The command was queued but the panel never picked it up before the timeout. The server removed it, so nothing ran. | Open the panel, check Auto-run and scripting file access. `get-bridge-status` shows the heartbeat age. Then call the tool again. |
 | `timeout` | The panel picked up the command but it did not finish within the timeout. It is still running. | Wait, then `get-results` with the id from the message. Do not resend. For renders and big batches the server already waits `AE_MCP_RENDER_TIMEOUT_MS` (10 minutes). |
 | `command-failed` | The command ran inside After Effects and threw. `bridgeError` holds the ExtendScript error with `code`, `line` and `fileName`. | Read `bridgeError.message`; the codes below say what went wrong. |
+| `ae-busy` | Another driver holds `driver.lock` (another chat's MCP server or an `ae-do` run). The message names it and how long it has held the lock. Nothing was sent. | Wait and call again, or ask that chat to pause. `get-ae-status` shows the holder. |
+| `ae-not-running` | After Effects is not running. Nothing was sent. | Start After Effects, open the project and the panel. |
+| `dialog-open` | A modal dialog is open in After Effects, so no script can run. Nothing was sent. `details.dialogs` has its text and buttons when Accessibility can see it. | `get-ae-status` with `deep: true`, then close it (`dismiss-ae-dialog` when enabled, or the human). |
+| `panel-not-running` | After Effects is idle but the panel is closed, or its timer stopped (common after a project opens). Nothing was sent. | `rearm-bridge-panel` for a stopped timer; for a closed panel, Window > mcp-bridge-auto.jsx. |
 | `invalid-result` | The result file could not be parsed. | Rare. Retry once; if it persists, file a bug with the file from `results/`. |
 | `disabled` | `run-extendscript` was called without `AE_MCP_ALLOW_RAW_SCRIPT=1`. | Use a dedicated tool, or have the human enable the variable. |
 | `invalid-batch` | One or more batch steps failed validation; nothing was sent. `problems[]` lists them. | Fix the step arguments. Node-only tools (`get-help`, `list-presets`, `analyze-audio-waveform`, `see-frame`) cannot be batched. |
@@ -33,6 +37,8 @@ These come back as `{ "tool": "...", "error": "<code>", "message": "...", ... }`
 | `tool-failed` | A Node-side failure not covered above. | The message has the detail. |
 | `not-found` (Node side) | A file path did not exist (`analyze-audio-waveform`, `apply-preset`). | Check the path; `~` is expanded. |
 | `unsupported-format`, `decode-failed` | `analyze-audio-waveform` could not read the file. | Only PCM WAV is read directly; install ffmpeg for other formats or convert to WAV. |
+
+With the AE guard on (macOS, the default), `timeout` and `bridge-not-running` messages end with `Guard: <what After Effects is doing>` and `details.guardState`, read from outside After Effects: a dialog, a running script, a stopped panel timer, or a busy main thread.
 
 Zod validation failures (wrong types, missing required fields, values out of range) are returned by the MCP layer before the tool runs, with the field path and the constraint.
 

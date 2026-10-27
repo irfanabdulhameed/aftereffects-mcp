@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0 (2026-10-27)
+
+The AE guard: After Effects keeps running through long and unattended sessions on macOS.
+
+- One driver at a time: `driver.lock` in the bridge folder, re-entrant per process, taken over when its process has died.
+- Fail-fast errors before a command is queued: `ae-not-running`, `dialog-open`, `panel-not-running`, `ae-busy`; timeouts say what After Effects is doing.
+- New tools: `get-ae-status`, `reload-bridge-panel` (loads a new panel version without restarting After Effects), `rearm-bridge-panel`, `dismiss-ae-dialog`.
+- Optional automatic closing of plain message boxes (off by default; `AE_MCP_ALLOW_DIALOG_DISMISS=1` or `guard-options.json`), never while After Effects is in front and never for dialogs with input fields.
+- `ae-do`: runs `.jsx` files by DoScript through the same guard, with alerts suppressed and errors returned as text.
+- The panel runs every command with dialogs suppressed, reports which command is running, and shows the driver, the last command and outside script runs; a timer throttle makes stray timers harmless.
+- A native helper (`ae-guard`, built with swiftc) reads windows and dialogs through Accessibility without activating After Effects.
+- README: how-it-works and guard diagrams; placeholder images removed.
+
 ## 2.0.0 (2026-09-14)
 
 A rewrite of the fork into a full After Effects MCP server. Organised by the phases in `docs/PLAN.md`.

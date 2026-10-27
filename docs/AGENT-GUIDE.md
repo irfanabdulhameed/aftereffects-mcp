@@ -98,6 +98,8 @@ Working from a style file (the human sets `AE_MCP_STYLE_FILE`):
 
 - `bridge-not-running`: the panel is closed, paused (Auto-run unticked) or file access is disabled. Nothing ran. Ask the human to open Window > mcp-bridge-auto.jsx. `get-bridge-status` shows the heartbeat age without waiting.
 - `timeout`: the command is still running. Wait, then `get-results` with the id. Do not resend the command; it would run twice.
+- `dialog-open`, `panel-not-running`, `ae-not-running`, `ae-busy`: the guard refused before sending anything. Call `get-ae-status` (add `deep: true` to tell a dialog from a running script), follow its `advice`, then call the tool again. Never probe After Effects with extra scripts while it is busy; that is what raises "can't run a script while a modal dialog is waiting".
+- After installing a new panel build: `reload-bridge-panel` loads it into the open panel without closing it.
 - Stale or surprising state: `list-layers` again. The human may have changed things between your calls.
 - Expression error in a result (`expressionState.error`): the expression was set but After Effects disabled it. Fix the code and `set-expression` again, or `get-expression-errors` to find every broken expression in the comp.
 - Effect not found: the name is wrong or a plugin is missing. `list-available-effects` with a query, or use the template's fallback (`deep-glow-with-fallback`).

@@ -8,6 +8,7 @@ import { registerCamera3dTools } from './camera-3d.js';
 import { registerCompositionTools } from './composition.js';
 import { registerEffectsTools } from './effects.js';
 import { registerExpressionTools } from './expressions.js';
+import { registerGuardTools } from './guard.js';
 import { registerHelpTools } from './help.js';
 import { registerKeyframeTools } from './keyframes.js';
 import { registerLayerTools } from './layers.js';
@@ -25,6 +26,7 @@ import { registerWorkflowTools } from './workflow.js';
 
 export function registerAllTools(server: McpServer): void {
   registerBatchTools(server);
+  registerGuardTools(server);
   registerProjectTools(server);
   registerCompositionTools(server);
   registerLayerTools(server);

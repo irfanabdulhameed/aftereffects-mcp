@@ -158,6 +158,28 @@ server/src/
 
 An easing value on a keyframe describes the segment that arrives at it: the out handle of the previous key and the in handle of the key. Presets map to `KeyframeEase(speed, influence)` pairs (see `lib/easing.jsx` for the table). Cubic-bezier is approximated per segment: influence from the x coordinates, speed from the handle slopes times the segment's value change per second. Spatial keyframes get zero tangents by default so motion paths are straight; `spatial: "auto"` keeps auto-bezier.
 
+## The AE guard
+
+After Effects runs one script at a time, and a single modal dialog stops everything: the panel's `app.scheduleTask` timer does not fire while a modal is open. So the guard watches After Effects from outside and never relies on After Effects to report its own trouble.
+
+```
+server/src/guard/
+  guard.ts        the states (not-running, dialog, running-command, running-script, busy, idle, paused,
+                  panel-stalled, panel-closed), the checks around every command, advice
+  lock.ts         driver.lock: one driver at a time, re-entrant, stale when its process is gone
+  sample.ts       reads After Effects' main thread from `sample`: modal loop, script, idle, busy
+  system.ts       process, real memory footprint (top MEM), swap, free disk, the window scan
+  doscript.ts     guarded DoScript: wrapper with suppressed alerts, result file per run, modal watch
+  native/ae-guard.swift   window list, front app, Accessibility view of dialogs, focus-free dismiss
+server/src/cli/ae-do.ts   guarded DoScript runner for shell scripts and other tools
+```
+
+Around every command the client takes `driver.lock`, and when the heartbeat is old it checks why before queueing (After Effects gone, a dialog, panel closed or its timer stopped) and refuses with a clear code. A timeout is explained the same way, and the lock is held until the timed-out command finishes. Inside the panel every command except undo and redo runs between `app.beginSuppressDialogs()` and `app.endSuppressDialogs(false)`, so a script error comes back as a result instead of an alert. The heartbeat says `state` (running, idle, paused) and which command is running since when, so a long render no longer looks like a dead panel.
+
+`ae-do` (`node server/build/cli/ae-do.js [--label L] file.jsx ...`) runs scripts by DoScript for tools that drive After Effects outside the MCP server, prints the script's last value as a `"returned": "..."` line, and adds: the driver lock, a refusal when After Effects is not running or shows a dialog, suppressed alerts, a modal watch on long runs, a result file per run, and a record in `external/` that the panel shows (Driver and Script rows).
+
+The helper never activates After Effects and never moves the mouse. `dismiss-ae-dialog` presses an allowed button through Accessibility or posts Escape to the After Effects process only; it refuses while After Effects is the front app and never presses Reset, Safe Mode, Disable, Don't Save, Delete, Quit, Remove, Replace, Revert or Discard. It is off by default. When it is on (`AE_MCP_ALLOW_DIALOG_DISMISS=1`, or `{"allowDialogDismiss": true}` in `guard-options.json` in the bridge folder, a machine setting that the server and the panel never rewrite), the guard also closes blocking dialogs by itself, before a command and during a long `ae-do` run, but only plain message boxes: a dialog with text fields, popups, sliders or radio buttons is a form someone may be filling in and is left alone, and nothing is touched while After Effects is the front app. It presses OK, or the dialog's only safe button, or posts Escape.
+
 ## Environment variables
 
 | Variable | Default | Meaning |
@@ -171,6 +193,9 @@ An easing value on a keyframe describes the segment that arrives at it: the out 
 | `AE_MCP_RESULT_MAX_AGE_MS` | `3600000` | Results older than this are removed on server start |
 | `AE_MCP_ALLOW_RAW_SCRIPT` | unset | `1` enables `run-extendscript` |
 | `AE_MCP_STYLE_FILE` | unset | Path to a JSON or YAML style file |
+| `AE_MCP_GUARD` | on (macOS) | `0` turns the AE guard off (no lock, no fail-fast checks, no guard tools) |
+| `AE_MCP_OWNER` | `MCP server <pid>` | Name written into `driver.lock`, shown to other drivers and in the panel |
+| `AE_MCP_ALLOW_DIALOG_DISMISS` | unset | `1` enables `dismiss-ae-dialog` and automatic closing of plain message boxes; `0` forces it off. Without it, `guard-options.json` in the bridge folder decides |
 
 ## Build and install
 

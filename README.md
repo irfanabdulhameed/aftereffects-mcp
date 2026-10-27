@@ -8,12 +8,43 @@ What sets it apart from other After Effects servers:
 - Self-verification: `see-frame` and `see-frames` return PNG frames so the agent looks at its own work before reporting.
 - Rig tools: the four studio rigs (edge glow, power warp transition, depth map blur reveal, blur colour reveal) as one-call tools with every parameter.
 - A style file: pin house durations, easings, text styles and colours, and reference them as `@style.entrance` or `@style.h1`.
-- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 190 tools uses them well.
+- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 193 tools uses them well.
 - Idempotent effects, real text animators, one easing model for every keyframe, and every command undoable in one step.
+- A guard for unattended runs (macOS): one driver at a time, script errors returned as text instead of alerts, stuck dialogs and stalled panels detected from outside After Effects, and nothing ever brought to the front.
 
-![Demo placeholder](docs/media/demo.gif)
+## How it works
 
-`docs/media/demo.gif` is a placeholder. To record one: open After Effects and the bridge panel side by side with Claude Code, ask for the title card from `examples/01-title-card.md`, capture the screen with any recorder, trim to 20 to 30 seconds, and export as GIF (or MP4 and link it here).
+You describe the motion in plain words. The agent turns it into tool calls, the server checks them and hands them to a small panel running inside After Effects, and the panel builds the result in your open project. The agent can then look at rendered frames of its own work before it reports back.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor You
+    participant Agent as Agent (Claude Code, Claude Desktop, VS Code)
+    participant Server as aftereffects-mcp server
+    participant Panel as Bridge panel in After Effects
+    You->>Agent: "Add a lower third for Maya Chen that slides in at 1 s"
+    Agent->>Server: create-text-layer, set-keyframes-multi, ... (or one batch)
+    Server->>Server: validate inputs, resolve @style values, guard checks
+    Server->>Panel: command file in the bridge folder
+    Panel->>Panel: run as one undo step
+    Panel-->>Server: result file (or a clear error)
+    Agent->>Server: see-frame at 1.5 s
+    Server-->>Agent: PNG of the frame
+    Agent-->>You: done, with what it built and what it checked
+```
+
+A typical session is a short loop: you direct, the agent builds and checks its own frames, you review, and only the changes are rebuilt.
+
+```mermaid
+flowchart LR
+    D[You describe a scene<br/>or give a reference] --> B[Agent builds it<br/>comps, layers, keys, effects]
+    B --> C{Agent checks<br/>its own frames}
+    C -- something is off --> B
+    C -- looks right --> R[You review<br/>in After Effects]
+    R -- notes --> B
+    R -- approved --> X[Render with the<br/>render queue or aerender]
+```
 
 ## Quick start
 
@@ -74,6 +105,7 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 | Render and preview | 10 | see-frame, contact sheets, render queue, aerender, stills |
 | Rigs | 5 | the four panels as tools |
 | Batch, workflow, utilities | 17 | batch, undo, status, snapshots, find, replace, relink |
+| AE guard (macOS) | 4 | status, dialogs, panel reload and re-arm |
 
 Every tool with its inputs and an example: [docs/TOOLS.md](docs/TOOLS.md) (generated). How an agent should work with them: [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md).
 
@@ -83,21 +115,11 @@ Each panel is a dockable ScriptUI panel in [panels/](panels/) with its own guide
 
 **Edge Glow** ([guide](panels/edge-glow/GUIDE.md)). A rounded rectangle with a glowing four-colour gradient rim, an animated light sweep and a soft coloured halo. Tool: `rig-edge-glow`.
 
-![Edge Glow still placeholder](docs/media/edge-glow.png)
-
 **Power Warp Transition** ([guide](panels/power-warp-transition/GUIDE.md)). A depth-map driven transition: gradient wipe, glowing scan line, pseudo-3D shake, CC Glass warp, chromatic aberration and fine distortions, keyframed to a time window. Tool: `rig-power-warp-transition`.
-
-![Power Warp still placeholder](docs/media/power-warp-transition.png)
 
 **Depth Map Blur Reveal** ([guide](panels/depth-map-blur-reveal/GUIDE.md)). An image resolves out of a depth-weighted blur with an exposure lift and a fading glow. Tool: `rig-depth-map-blur-reveal`.
 
-![Depth Map Blur Reveal still placeholder](docs/media/depth-map-blur-reveal.png)
-
 **Blur Color Reveal** ([guide](panels/blur-color-reveal/GUIDE.md)). A soft two-tone colour disc blooms outward to reveal the content beneath. Tool: `rig-blur-color-reveal`.
-
-![Blur Color Reveal still placeholder](docs/media/blur-color-reveal.png)
-
-The still images are placeholders; render one frame of each rig with `see-frame` or `export-frame-png` and save it under `docs/media/`.
 
 ## Architecture in one diagram
 
@@ -113,6 +135,35 @@ flowchart LR
 
 Commands are files with ids; the panel executes them in order inside one undo group each; results come back as files matched on the id. Details, timing, environment variables and the reasons behind the design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## The guard (macOS)
+
+After Effects runs one script at a time, and one alert box stops everything until someone clicks it. The guard keeps long or overnight runs going without touching your screen:
+
+```mermaid
+flowchart TD
+    S[A command or script<br/>wants After Effects] --> L{Someone else<br/>driving it?}
+    L -- yes --> W[Wait for driver.lock,<br/>then say who holds it]
+    L -- no --> A{After Effects<br/>running?}
+    A -- no --> N[Stop: ae-not-running<br/>nothing is launched]
+    A -- yes --> G{A dialog<br/>open?}
+    G -- "plain message, AE in background,<br/>auto-close on" --> K[Close it: OK, the only<br/>safe button, or Escape]
+    K --> RUN
+    G -- "a form, AE in front,<br/>or auto-close off" --> O[Stop: dialog-open<br/>with its text and buttons]
+    G -- none --> RUN[Run with alerts suppressed]
+    RUN --> E{Result}
+    E -- script error --> T[Error comes back as text<br/>with the line number]
+    E -- blocked by a modal --> O
+    E -- ok --> V[Value returned,<br/>shown in the panel]
+```
+
+- `driver.lock` in the bridge folder lets only one client drive After Effects at a time; a lock whose process has died is taken over.
+- Script errors never leave an alert behind: every command runs with dialogs suppressed and returns the error as text.
+- `get-ae-status` tells apart "busy rendering", "waiting in a dialog", "panel closed" and "panel timer stopped", from outside After Effects, using the window list, Accessibility and a main-thread sample.
+- Closing dialogs is off by default. When enabled, it only closes plain message boxes, never a dialog with fields, popups or sliders, never while After Effects is the front app, and never presses Reset, Safe Mode, Don't Save, Delete, Quit, Replace, Revert or Discard.
+- `ae-do` runs `.jsx` files through the same guard for scripts and tools outside the MCP server.
+
+Setup, the states and the settings: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-ae-guard).
+
 ## Style file
 
 Point `AE_MCP_STYLE_FILE` at a JSON or YAML file with named durations, easings, stagger values, text styles, colours and free-text rules. The agent sees a summary in `get-help` and can write `"@style.entrance"` or `"@style.h1"` wherever an easing or text style is accepted. See [docs/style-file.example.json](docs/style-file.example.json).
@@ -124,13 +175,14 @@ Point `AE_MCP_STYLE_FILE` at a JSON or YAML file with named durations, easings, 
 3. `bridge-not-running`: the panel is closed or Auto-run is unticked. Nothing ran; call the tool again once the panel is open.
 4. `timeout` on a render or big batch: it is still running; `get-results` with the id fetches it when done.
 5. `versionsMatch: false` from `get-bridge-status`: `npm run build && npm run install-bridge`, reopen the panel.
+6. `dialog-open` or `ae-busy`: a dialog is waiting in After Effects, or another client is driving it. `get-ae-status` says which.
 
 Every error code and what to do: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Compatibility
 
 - After Effects: written against the 2024 to 2026 scripting API. The file bridge, undo groups and every core tool work on 2022 and later. Features that need newer versions return a clear `unsupported` error on older ones: per-layer track mattes (23.0), the font list (24.0), `saveFrameToPng` for `see-frame` (22.3, with a render-queue fallback), dropdown control items (2023), saving presets by script.
-- Tested here: the Node side, the mock bridge and the assembled panel parse on macOS with Node 20 to 23. The ExtendScript side could not be run against a live After Effects during this rewrite; the smoke test (`npm run smoke`) exists for exactly that, and `docs/DECISIONS.md` lists the matchNames and version behaviours that are unverified.
+- Tested here: After Effects 2026 (26.5) on macOS with Apple silicon, driven for long unattended runs through the bridge and `ae-do`; the Node side and the mock bridge with Node 20 to 23. `npm run smoke` checks a live After Effects, and `docs/DECISIONS.md` lists the matchNames and version behaviours not yet verified on older versions.
 - Mac and Windows: paths, the panel install and the setup scripts handle both. Continuous integration runs on Ubuntu and Windows with Node 20 and 22.
 - Node.js 18 or later.
 

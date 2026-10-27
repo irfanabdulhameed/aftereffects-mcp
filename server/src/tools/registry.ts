@@ -33,6 +33,7 @@ export type ToolGroup =
   | 'render'
   | 'batch'
   | 'rigs'
+  | 'guard'
   | 'help';
 
 export interface ToolContext {

@@ -10,6 +10,7 @@
 import { randomBytes } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { BridgeGuard, SystemGuard } from '../guard/guard.js';
 import { BridgeConfig, BridgePaths, bridgePaths, ensureBridgeDirs, loadConfig } from './paths.js';
 import {
   BRIDGE_PROTOCOL,
@@ -49,11 +50,14 @@ function pad(n: number, width: number): string {
 export class BridgeClient {
   readonly config: BridgeConfig;
   readonly paths: BridgePaths;
+  /** The AE guard (driver lock, fail-fast checks, timeout diagnosis). Off unless given; the real server passes one. */
+  readonly guard: BridgeGuard | undefined;
   private seq = 0;
 
-  constructor(config: BridgeConfig = loadConfig()) {
+  constructor(config: BridgeConfig = loadConfig(), opts: { guard?: BridgeGuard } = {}) {
     this.config = config;
     this.paths = bridgePaths(config.bridgeDir);
+    this.guard = opts.guard;
     ensureBridgeDirs(this.paths);
   }
 
@@ -188,10 +192,46 @@ export class BridgeClient {
     );
   }
 
-  /** Enqueue and wait. The normal path for every tool. */
+  /**
+   * Enqueue and wait. The normal path for every tool. With a guard: takes the
+   * driver lock first, refuses fast when After Effects cannot run the command
+   * (not running, a dialog open, panel closed or stalled), and explains timeouts.
+   */
   async run(command: string, args: Record<string, unknown> = {}, opts: RunOptions = {}): Promise<JsonValue> {
-    const { id } = this.enqueue(command, args);
-    return this.waitForResult(id, command, this.timeoutMsFor(opts.timeout));
+    if (!this.guard) {
+      const { id } = this.enqueue(command, args);
+      return this.waitForResult(id, command, this.timeoutMsFor(opts.timeout));
+    }
+    const guard = this.guard;
+    const release = await guard.beforeCommand(this, command);
+    let id: string | undefined;
+    let holding = false;
+    try {
+      id = this.enqueue(command, args).id;
+      return await this.waitForResult(id, command, this.timeoutMsFor(opts.timeout));
+    } catch (err) {
+      if (err instanceof BridgeError && (err.code === 'timeout' || err.code === 'bridge-not-running')) {
+        if (err.code === 'timeout' && id) {
+          guard.holdUntilDone(this, id, release);
+          holding = true;
+        }
+        try {
+          const why = await guard.explain(this);
+          const base = (err.details && typeof err.details === 'object' && !Array.isArray(err.details) ? err.details : {}) as Record<string, JsonValue>;
+          throw new BridgeError(err.code, `${err.message} Guard: ${why.summary}${why.advice.length ? ' ' + why.advice.join(' ') : ''}`, {
+            command,
+            id: err.id,
+            details: { ...base, guardState: why.state, guardAdvice: why.advice },
+          });
+        } catch (explained) {
+          if (explained instanceof BridgeError) throw explained;
+          throw err;
+        }
+      }
+      throw err;
+    } finally {
+      if (!holding) release();
+    }
   }
 
   readHeartbeat(): BridgeHeartbeat | undefined {
@@ -303,9 +343,14 @@ export class BridgeClient {
 
 let defaultClient: BridgeClient | undefined;
 
+/** The guard is on for the real server on macOS; AE_MCP_GUARD=0 turns it off, and tests never get it. */
+export function guardEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return process.platform === 'darwin' && env.AE_MCP_GUARD !== '0' && !env.VITEST;
+}
+
 /** The process-wide client. Tests construct their own with a temporary directory. */
 export function getBridge(): BridgeClient {
-  if (!defaultClient) defaultClient = new BridgeClient();
+  if (!defaultClient) defaultClient = new BridgeClient(loadConfig(), { guard: guardEnabled() ? new SystemGuard() : undefined });
   return defaultClient;
 }
 
