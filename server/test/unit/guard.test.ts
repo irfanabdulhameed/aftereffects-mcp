@@ -131,8 +131,8 @@ describe('driver lock', () => {
   it('waits for a live foreign holder, then reports who it is', async () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-lock-'));
     const now = new Date().toISOString();
-    // pid 1 (launchd) is always alive and never ours.
-    fs.writeFileSync(lockPath(dir), JSON.stringify({ owner: 'Render chat', pid: 1, host: os.hostname(), purpose: 'part 5', acquiredAt: now, refreshedAt: now }));
+    // The test runner's parent process is alive on every platform and never ours.
+    fs.writeFileSync(lockPath(dir), JSON.stringify({ owner: 'Render chat', pid: process.ppid, host: os.hostname(), purpose: 'part 5', acquiredAt: now, refreshedAt: now }));
     await expect(acquireLock(dir, { owner: 'test', waitMs: 300 })).rejects.toBeInstanceOf(LockBusyError);
     try {
       await acquireLock(dir, { owner: 'test', waitMs: 100 });
