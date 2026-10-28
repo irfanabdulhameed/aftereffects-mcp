@@ -104,10 +104,8 @@ MCP.render.saveFrame = function (comp, t, filePath) {
     if (file.exists) { try { file.remove(); } catch (e0) {} }
     if (typeof comp.saveFrameToPng === "function") {
         comp.saveFrameToPng(t, file);
-        if (!file.exists) {
-            MCP.fail("saveFrameToPng reported no error but " + file.fsName + " was not written. Check that the folder is writable.", "io", { file: file.fsName });
-        }
-        return "saveFrameToPng";
+        // After Effects 2025 and later write the PNG after the call returns; the server waits for the file.
+        return file.exists ? "saveFrameToPng" : "saveFrameToPng-async";
     }
     // Fallback for After Effects older than 22.3: a temporary render queue item.
     var rq = app.project.renderQueue;
@@ -152,7 +150,8 @@ MCP.render.frameInfo = function (comp, t, frame, file, method) {
         time: MCP.round(t),
         frame: frame,
         composition: MCP.serialize.compRef(comp),
-        method: method
+        method: method,
+        background: _mcpTry(function () { return [comp.bgColor[0], comp.bgColor[1], comp.bgColor[2]]; }, null)
     };
 };
 

@@ -30,6 +30,11 @@ import { registerCheckTools } from './check.js';
 import { registerVectorTools } from './vectors.js';
 import { registerTextExtraTools } from './text-extras.js';
 import { registerAdvanced3dTools } from './advanced-3d.js';
+import { registerSceneTools } from './scenes.js';
+import { registerTransitionTools } from './transitions.js';
+import { registerUiDemoTools } from './ui-demo.js';
+import { registerMotionRigTools } from './motion-rigs.js';
+import { registerChartTools } from './charts.js';
 
 export function registerAllTools(server: McpServer): void {
   registerBatchTools(server);
@@ -58,5 +63,10 @@ export function registerAllTools(server: McpServer): void {
   registerVectorTools(server);
   registerTextExtraTools(server);
   registerAdvanced3dTools(server);
+  registerSceneTools(server);
+  registerTransitionTools(server);
+  registerUiDemoTools(server);
+  registerMotionRigTools(server);
+  registerChartTools(server);
   registerHelpTools(server);
 }

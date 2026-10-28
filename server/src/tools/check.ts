@@ -49,7 +49,7 @@ export function registerCheckTools(server: McpServer): void {
     timeout: 120000,
     mutating: false,
     description:
-      'Checks how a composition is built and lists problems, each with severity (error, warning, info), comp, layer, property path, time and frame, and a one-line fix. Errors: frame-by-frame keys (3 or more on consecutive frames), expression errors, missing footage, fonts that are not installed. Warnings: hold-key ladders, Source Text with many keys, layers of 3 frames or less, many layers sharing one name stem, effects switched off or missing, precomps shorter than their use. Info: layers outside the comp, the properties with the most keys. ' +
+      'Checks how a composition is built and lists problems, each with severity (error, warning, info), comp, layer, property path, time and frame, and a one-line fix. Errors: frame-by-frame keys (3 or more on consecutive frames), expression errors, missing footage, fonts that are not installed. Warnings: hold-key ladders, Source Text with many keys, layers of 3 frames or less, many layers sharing one name stem (not copies an expression rig places), effects switched off or missing, precomps shorter than their use. Info: layers outside the comp, the properties with the most keys. ' +
       'Use when: before showing work to a person or after a large automated build. Do not use for: expression errors alone (get-expression-errors) or how a frame looks (see-frame). ' +
       'Inputs: comp; recurse into nested comps; checks to run (default all); limits; minSeverity. ' +
       'Returns: summary counts by severity, total, truncated, the comps checked, findings sorted errors first, and key statistics. ' +

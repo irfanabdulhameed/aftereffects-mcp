@@ -28,8 +28,13 @@ import { responses as check } from './responses/check.js';
 import { responses as vectors } from './responses/vectors.js';
 import { responses as textExtras } from './responses/text-extras.js';
 import { responses as advanced3d } from './responses/advanced-3d.js';
+import { responses as scenes } from './responses/scenes.js';
+import { responses as transitions } from './responses/transitions.js';
+import { responses as uiDemo } from './responses/ui-demo.js';
+import { responses as motionRigs } from './responses/motion-rigs.js';
+import { responses as charts } from './responses/charts.js';
 
-export const responses = { ...core, ...project, ...composition, ...layers, ...transform, ...keyframes, ...expressions, ...text, ...shapes, ...masks, ...effects, ...camera3d, ...time, ...markersAudio, ...render, ...rigs, ...workflow, ...components, ...animate, ...styles, ...check, ...vectors, ...textExtras, ...advanced3d };
+export const responses = { ...core, ...project, ...composition, ...layers, ...transform, ...keyframes, ...expressions, ...text, ...shapes, ...masks, ...effects, ...camera3d, ...time, ...markersAudio, ...render, ...rigs, ...workflow, ...components, ...animate, ...styles, ...check, ...vectors, ...textExtras, ...advanced3d, ...scenes, ...transitions, ...uiDemo, ...motionRigs, ...charts };
 
 export function respond(command, args, ctx) {
   const fn = responses[command];

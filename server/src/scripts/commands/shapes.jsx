@@ -42,7 +42,7 @@ MCP.shape.addShapeGroup = function (container, args, comp) {
         pathInfo.size = size;
     } else if (type === "polygon" || type === "star") {
         pathProp = vg.addProperty("ADBE Vector Shape - Star");
-        pathProp.property("ADBE Vector Star Type").setValue(type === "polygon" ? 1 : 2);
+        pathProp.property("ADBE Vector Star Type").setValue(type === "polygon" ? 2 : 1); // 1 Star, 2 Polygon
         pathProp.property("ADBE Vector Star Points").setValue(Math.max(3, Math.round(MCP.num(args.points, 5))));
         pathProp.property("ADBE Vector Star Outer Radius").setValue(MCP.num(args.outerRadius, size[0] / 2));
         if (type === "star") { pathProp.property("ADBE Vector Star Inner Radius").setValue(MCP.num(args.innerRadius, size[0] / 4)); }
@@ -336,14 +336,14 @@ MCP.shape.toShape = function (item, t, notes) {
     }
     if (kind === "star") {
         var n = Math.max(3, Math.round(Number(val("ADBE Vector Star Points", 5))));
-        var type = Number(val("ADBE Vector Star Type", 2));
+        var type = Number(val("ADBE Vector Star Type", 1)); // 1 Star, 2 Polygon
         var R = Number(val("ADBE Vector Star Outer Radius", 50)), r = Number(val("ADBE Vector Star Inner Radius", 25));
         var pos = val("ADBE Vector Star Position", [0, 0]);
         var rot = Number(val("ADBE Vector Star Rotation", 0)) * Math.PI / 180;
         var pts = [];
-        var count = type === 1 ? n : n * 2;
+        var count = type === 2 ? n : n * 2;
         for (var i = 0; i < count; i++) {
-            var rad = (type === 1 || i % 2 === 0) ? R : r;
+            var rad = (type === 2 || i % 2 === 0) ? R : r;
             var a = -Math.PI / 2 + rot + (i * 2 * Math.PI) / count;
             pts.push([pos[0] + Math.cos(a) * rad, pos[1] + Math.sin(a) * rad]);
         }

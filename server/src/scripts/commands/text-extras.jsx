@@ -232,13 +232,12 @@ MCP.textExtras.BASED_ON = { "characters": 1, "characters-excluding-spaces": 2, "
 
 /** Adds one animator property and sets it, re-fetching the group each time (references go stale after addProperty). */
 MCP.textExtras.addAnimatorProp = function (animators, animIndex, matchName, value, notes) {
+    // After Effects lists every animator property in this group before it is added, but only added ones take
+    // effect, so always add (adding an active one is harmless) and fetch the group again afterwards.
     var props = animators.property(animIndex).property("ADBE Text Animator Properties");
+    try { props.addProperty(matchName); } catch (e0) { notes.push("Could not add animator property " + matchName + ": " + e0.toString()); return null; }
+    props = animators.property(animIndex).property("ADBE Text Animator Properties");
     var p = MCP.childProp(props, matchName);
-    if (!p) {
-        try { props.addProperty(matchName); } catch (e0) { notes.push("Could not add animator property " + matchName + ": " + e0.toString()); return null; }
-        props = animators.property(animIndex).property("ADBE Text Animator Properties");
-        p = MCP.childProp(props, matchName);
-    }
     if (!p) { notes.push("Animator property " + matchName + " not found after adding it."); return null; }
     try { p.setValue(value); } catch (e1) {
         var ok = false;

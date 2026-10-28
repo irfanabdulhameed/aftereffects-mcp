@@ -376,11 +376,12 @@ MCP.text.serializeAnimator = function (anim) {
 
 /** Adds an animated property to an animator, trying 2D then 3D array shapes. Returns the property or null. */
 MCP.text.addAnimated = function (anim, matchName, value, notes) {
+    // After Effects 26 lists every animator property before it is added, but only added ones take effect:
+    // always add (harmless when already active), then fetch it again.
     var props = MCP.text.animatorProps(anim);
-    var p = MCP.childProp(props, matchName);
-    if (!p) {
-        try { p = props.addProperty(matchName); } catch (e) { p = null; }
-    }
+    var p = null;
+    try { p = props.addProperty(matchName); } catch (e) { p = null; }
+    p = MCP.childProp(MCP.text.animatorProps(anim), matchName) || p;
     if (!p) { notes.push("Could not add animator property '" + matchName + "'."); return null; }
     if (MCP.isDefined(value)) {
         var ok = false;

@@ -399,6 +399,21 @@ describe('auditComposition in a vm against a fake comp', () => {
   });
 });
 
+describe('auditComposition skips copies placed by a rig', () => {
+  it('reports no shared name stem when an expression places every copy', () => {
+    const ctx = makeContext();
+    const petals = [1, 2, 3].map((i) =>
+      finishLayer(layerBase(ctx, 'ShapeLayer', i, i === 1 ? 'Petal' : `Petal ${i}`), [
+        group('Transform', 'ADBE Transform Group', [prop('Position', 'ADBE Position', { expression: 'thisComp.layer("Petal Array").effect("Radius")(1)' })]),
+      ]),
+    );
+    const loose = [4, 5, 6].map((i) => finishLayer(layerBase(ctx, 'ShapeLayer', i, `Card ${i}`), [group('Transform', 'ADBE Transform Group', [prop('Position', 'ADBE Position')])]));
+    ctx.app.project.activeItem = compOf(ctx, 1, 'Ring', [...petals, ...loose]);
+    const res = JSON.parse(JSON.stringify(ctx.MCP.commands.auditComposition({ checks: ['name-stems'] })));
+    expect(res.findings.map((f: Any) => f.stem)).toEqual(['card']);
+  });
+});
+
 describe('purgeCaches, saveVersion and organizeProject in a vm', () => {
   it('purgeCaches maps targets and reports memory freed', () => {
     const ctx = makeContext();

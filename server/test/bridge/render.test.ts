@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { PNG } from 'pngjs';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished } from 'vitest';
 import { assertProjectSavedForAerender, renderConfig } from '../../src/tools/render.js';
 import { targetSize, tileLayout } from '../../src/render/png.js';
 import { callTool, makeTestBridge, makeTestServer, TestBridge } from '../helpers.js';
@@ -58,6 +58,15 @@ describe('see-frame', () => {
     expect(infoOf(r.raw)).toMatchObject({ frame: 90, time: 3 });
   });
 
+  it('shows transparent areas over the composition background colour unless flatten is false', async () => {
+    const flat = imageOf((await callTool(client, 'see-frame', { time: 1, scale: 1 })).raw).png;
+    expect([...flat.data.subarray(0, 4)]).toEqual([51, 102, 153, 255]);
+    const kept = imageOf((await callTool(client, 'see-frame', { time: 1, scale: 1, flatten: false })).raw).png;
+    expect(kept.data[3]).toBe(0);
+    const sheet = imageOf((await callTool(client, 'see-frames', { times: [0, 1], columns: 2, scale: 1, label: false })).raw).png;
+    expect([...sheet.data.subarray(0, 4)]).toEqual([51, 102, 153, 255]);
+  });
+
   it('omits the text block when includeInfo is false', async () => {
     const r = await callTool(client, 'see-frame', { includeInfo: false });
     expect(r.raw.content.length).toBe(1);
@@ -102,6 +111,10 @@ describe('see-frames', () => {
   });
 
   it('reports a missing file as an isError result naming the frames folder', async () => {
+    process.env.AE_MCP_FRAME_WAIT_MS = '300';
+    onTestFinished(() => {
+      delete process.env.AE_MCP_FRAME_WAIT_MS;
+    });
     // Simulate the two sides seeing different folders: delete every frame the mock writes as soon as it appears.
     const dir = tb.client.paths.frames;
     const watcher = fs.watch(dir, (_event, name) => {

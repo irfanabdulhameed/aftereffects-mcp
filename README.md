@@ -8,11 +8,12 @@ What sets it apart from other After Effects servers:
 - Self-verification: `see-frame` and `see-frames` return PNG frames so the agent looks at its own work before reporting.
 - Rig tools: the four studio rigs (edge glow, power warp transition, depth map blur reveal, blur colour reveal) as one-call tools with every parameter.
 - A style file: pin house durations, easings, text styles and colours, and reference them as `@style.entrance` or `@style.h1`.
-- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 229 tools uses them well.
+- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 261 tools uses them well.
 - Idempotent effects, real text animators, one easing model for every keyframe, and every command undoable in one step.
 - Components: turn layers into reusable parts with a simple controls list (Essential Properties), place many copies with different text and colours, save them as templates or a library.
 - Animation shortcuts built the way an animator builds them: few eased keyframes, text animators and expressions, never a key on every frame.
 - A project check that flags frame-by-frame keys, loose layers, broken expressions and missing fonts or footage before anyone sees the work.
+- Film building blocks: a scene plan with a master comp, transitions and element carries between scenes, UI demo moves (cursor, scroll, focus, device frames, toasts), motion rigs (counters, reflowing grids, effectors, chains, clone arrays, shape morphs) and charts from data.
 - A guard for unattended runs (macOS): one driver at a time, script errors returned as text instead of alerts, stuck dialogs and stalled panels detected from outside After Effects, and nothing ever brought to the front.
 
 ## How it works
@@ -71,6 +72,8 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 - "Make this button a component with Label and Fill controls and place three copies with different labels."
 - "Type the prompt on at 20 characters per second with a blinking cursor, then press the Send button."
 - "Check the comp for anything built frame by frame before I look at it."
+- "Plan a 30 second film in six scenes, then match-cut from scene 2 to scene 3 and carry the logo across."
+- "Build a bar chart from revenue.csv and grow Q4 to 130 at 3 seconds."
 - "Read the timing from the reference comp and rebuild the lower third in our style file."
 
 ## Tool overview
@@ -97,6 +100,11 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 | Animation shortcuts | 9 | move a property, entrances and exits with stagger, typewriter with cursor, word-by-word reveal, button press, move along a path, replay at markers, camera push |
 | Layer styles | 4 | drop shadow, glows, bevel, satin, colour and gradient overlay, stroke |
 | Project check | 4 | construction audit, clear caches, save a numbered version, sort the project into folders |
+| Scenes | 6 | a scene plan with a master comp, retime, insert and remove scenes, reference overlays |
+| Transitions | 4 | match cut, push, whip, zoom-through, mask reveal, carry an element across a cut |
+| UI demo | 6 | cursor journey with clicks, scroll in a window, focus on a region, device frames, highlights, toasts |
+| Motion rigs | 9 | number counter, grid and bento layout, proximity effector, follow chain, clone array, shape morph, wiggle, sway, fit to a box |
+| Charts | 7 | bar, line and pie charts, stat with sparkline, progress bar and ring, animated data changes |
 | AE guard (macOS) | 4 | status, dialogs, panel reload and re-arm |
 
 Every tool with its inputs and an example: [docs/TOOLS.md](docs/TOOLS.md) (generated). How an agent should work with them: [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md).

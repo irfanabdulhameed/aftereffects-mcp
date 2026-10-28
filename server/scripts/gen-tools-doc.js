@@ -36,6 +36,11 @@ const GROUP_TITLES = {
   animate: 'Animation shortcuts',
   styles: 'Layer styles',
   check: 'Project check',
+  'scenes': 'Scene planning',
+  'transitions': 'Transitions',
+  'ui-demo': 'UI demo kit',
+  'motion-rigs': 'Motion rigs',
+  'charts': 'Charts and data',
   help: 'Help',
 };
 

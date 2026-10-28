@@ -555,11 +555,12 @@ MCP.components.cropToContent = function (comp, instance, pad) {
             measured.notes.push("Layer '" + L.name + "' has a Position expression; check it after the crop.");
         }
     }
-    comp.width = W;
-    comp.height = H;
+    // Read the instance before resizing: After Effects re-centres the anchor of every layer using a comp whose size changes.
     var tg = instance.property("ADBE Transform Group");
     var ap = tg.property("ADBE Anchor Point"), pp = tg.property("ADBE Position");
     var a0 = ap.value, p0 = pp.value;
+    comp.width = W;
+    comp.height = H;
     var a1 = [W / 2, H / 2];
     var p1 = [p0[0] - a0[0] + x0 + a1[0], p0[1] - a0[1] + y0 + a1[1]];
     if (a0.length > 2) { a1.push(a0[2]); }
@@ -978,27 +979,31 @@ MCP.register("exportComponentTemplate", function (args) {
         }
         try { proj.save(); saved = true; } catch (e1) { MCP.fail("Could not save the project before exporting: " + e1.message, "io"); }
     }
+    // The export invalidates script references to the comp (and the project), so keep what the result needs
+    // and look the comp up again by id afterwards.
+    var compId = comp.id, compName = comp.name;
     var ok = false;
     try { ok = comp.exportAsMotionGraphicsTemplate(overwrite, folder.fsName); } catch (e2) {
-        MCP.fail("Exporting '" + comp.name + "' as a Motion Graphics template failed: " + e2.message, "io");
+        MCP.fail("Exporting '" + compName + "' as a Motion Graphics template failed: " + e2.message, "io");
     }
+    comp = _mcpTry(function () { return app.project.itemByID(compId); }, null);
     var check = new File(file.fsName);
     var exists = check.exists;
     if (!ok && !exists) {
-        MCP.fail("exportAsMotionGraphicsTemplate returned false for '" + comp.name + "' and no file appeared at " + check.fsName + ". Check that the folder is writable and the template name has no characters the file system refuses.", "io");
+        MCP.fail("exportAsMotionGraphicsTemplate returned false for '" + compName + "' and no file appeared at " + check.fsName + ". Check that the folder is writable and the template name has no characters the file system refuses.", "io");
     }
     if (!ok) { notes.push("After Effects returned false, but the file exists."); }
-    var count = _mcpTry(function () { return comp.motionGraphicsTemplateControllerCount; }, null);
+    var count = comp ? _mcpTry(function () { return comp.motionGraphicsTemplateControllerCount; }, null) : null;
     if (count === 0) { notes.push("The template has no Essential Properties, so editors cannot change anything in it."); }
     return {
-        composition: MCP.serialize.compRef(comp),
+        composition: { id: compId, name: compName },
         templateName: name,
         file: check.fsName,
         exists: exists,
         size: exists ? check.length : 0,
         overwrite: overwrite,
         projectSaved: saved,
-        projectFile: proj.file ? proj.file.fsName : null,
+        projectFile: _mcpTry(function () { return app.project.file ? app.project.file.fsName : null; }, null),
         essentialPropertyCount: count,
         notes: notes
     };

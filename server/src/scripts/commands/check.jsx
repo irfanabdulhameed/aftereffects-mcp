@@ -460,6 +460,17 @@ MCP.check.auditLayer = function (state, comp, layer, queue, depth) {
     }
 };
 
+/** True when an expression drives the layer's position: copies placed by a rig (clone-array, grid-layout), not loose copies. */
+MCP.check.rigDriven = function (layer) {
+    var tg = layer.property("ADBE Transform Group");
+    var names = ["ADBE Position", "ADBE Position_0", "ADBE Position_1"];
+    for (var i = 0; i < names.length; i++) {
+        var p = _mcpTry(function () { return tg.property(names[i]); }, null);
+        if (p && _mcpTry(function () { return p.expressionEnabled && p.expression !== ""; }, false)) { return true; }
+    }
+    return false;
+};
+
 MCP.check.auditComp = function (state, comp, queue, depth) {
     var on = state.on, L = state.limits;
     var stems = {}, order = [];
@@ -476,6 +487,9 @@ MCP.check.auditComp = function (state, comp, queue, depth) {
         for (var s = 0; s < order.length; s++) {
             var group = stems[order[s]];
             if (group.length < L.nameStemCount) { continue; }
+            var loose = 0;
+            for (var d = 0; d < group.length; d++) { if (!MCP.check.rigDriven(group[d])) { loose++; } }
+            if (loose === 0) { continue; }
             var refs = [];
             for (var j = 0; j < group.length && j < 12; j++) { refs.push(MCP.serialize.layerRef(group[j])); }
             MCP.check.add(state, MCP.check.finding("name-stems", "warning", comp, group[0], {

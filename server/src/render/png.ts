@@ -80,9 +80,24 @@ export function resizeImage(src: RgbaImage, dstWidth: number, dstHeight: number)
   return { width: dw, height: dh, data: out };
 }
 
-/** Convenience: decode, scale to the target size, encode. Returns the new size too. */
-export function scalePngBuffer(buffer: Buffer, scale: number | undefined, maxWidth: number | undefined): { png: Buffer; width: number; height: number; sourceWidth: number; sourceHeight: number } {
-  const src = decodePng(buffer);
+/** Composites the image onto an opaque colour (RGB 0..1), as the After Effects viewer shows a comp over its background colour. */
+export function flattenImage(img: RgbaImage, rgb: readonly number[]): RgbaImage {
+  const bg = [0, 1, 2].map((i) => Math.round(Math.max(0, Math.min(1, Number(rgb[i]) || 0)) * 255));
+  const out = Buffer.alloc(img.data.length);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const a = img.data[i + 3] / 255;
+    out[i] = Math.round(img.data[i] * a + bg[0] * (1 - a));
+    out[i + 1] = Math.round(img.data[i + 1] * a + bg[1] * (1 - a));
+    out[i + 2] = Math.round(img.data[i + 2] * a + bg[2] * (1 - a));
+    out[i + 3] = 255;
+  }
+  return { width: img.width, height: img.height, data: out };
+}
+
+/** Convenience: decode, flatten onto background (when given), scale to the target size, encode. Returns the new size too. */
+export function scalePngBuffer(buffer: Buffer, scale: number | undefined, maxWidth: number | undefined, background?: readonly number[]): { png: Buffer; width: number; height: number; sourceWidth: number; sourceHeight: number } {
+  const decoded = decodePng(buffer);
+  const src = background ? flattenImage(decoded, background) : decoded;
   const size = targetSize(src.width, src.height, scale, maxWidth);
   const resized = resizeImage(src, size.width, size.height);
   return { png: encodePng(resized), width: resized.width, height: resized.height, sourceWidth: src.width, sourceHeight: src.height };

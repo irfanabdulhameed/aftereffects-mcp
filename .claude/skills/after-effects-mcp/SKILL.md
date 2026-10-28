@@ -5,7 +5,7 @@ description: Drive Adobe After Effects through the AfterEffectsMCP server. Use w
 
 # After Effects MCP
 
-The `AfterEffectsMCP` server exposes about 230 tools that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
+The `AfterEffectsMCP` server exposes about 260 tools that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
 
 ## Before anything
 
@@ -57,6 +57,14 @@ Every repeated UI object is one component: `create-component` precomposes it and
 - `add-text-box` puts a box or pill behind text that resizes with it; `set-text-on-path`, `set-per-character-3d`, `fit-text-to-box`.
 - `import-vector-as-shapes` for .svg and .ai art, `shape-from-svg-path` for icon path data, `set-shape-gradient` for gradients (colour stops need `allowClipboard`, which takes the screen).
 - Extruded text and shapes: `set-composition-renderer` (Advanced 3D), then `set-extrusion`; `add-environment-light` for image lighting.
+
+## Films, rigs and charts
+
+- A film is a scene plan: `create-scene-plan` makes a master comp of scene comps; `set-scene-duration`, `insert-scene` and `remove-scene` retime it without re-keying; `add-reference-overlay` puts a reference video on top as a guide.
+- Between scenes: `add-transition` (match cut, push, whip, zoom-through, mask reveal), `carry-element` to carry one element across a cut.
+- Product demos: `cursor-journey` (moves and clicks), `scroll-in-window`, `focus-on-region`, `device-frame`, `highlight-region`, `add-toast`.
+- Procedural motion is a rig with controls on a null, never keys per layer: `grid-layout` (grids and bento that reflow), `proximity-effector`, `follow-chain`, `clone-array`, `wiggle-rig`, `sway-loop`, `fit-to-box`, `number-counter`, `shape-morph`. Rigs stack on the same property.
+- Data: `create-bar-chart`, `create-line-chart`, `create-pie-chart`, `create-stat`, `create-progress`; change values later with `update-chart-data`.
 
 ## Effects
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.3.0 (2026-10-28)
+
+32 new tools, 261 in all.
+
+- Scene planning (6): create-scene-plan, list-scenes, set-scene-duration, insert-scene, remove-scene, add-reference-overlay. A film as a master comp of scene comps, retimed without re-keying.
+- Transitions (4): add-transition (match cut, push, whip, zoom-through, mask reveal and more), carry-element (one element carried across a cut), list-transitions, remove-transition. Scenes keep covering the frame through every move.
+- UI demo kit (6): cursor-journey, scroll-in-window, focus-on-region, device-frame, highlight-region, add-toast.
+- Motion rigs (9): number-counter, grid-layout (grids and bento layouts that reflow), proximity-effector, follow-chain, clone-array, shape-morph, wiggle-rig, sway-loop, fit-to-box. Controls on a null, expressions that stack.
+- Charts (7): create-bar-chart, create-line-chart, create-pie-chart, create-stat, create-progress, update-chart-data, get-chart-data. Data from JSON or CSV, values as sliders, animated changes.
+- see-frame and see-frames show transparent areas over the composition background colour, as the viewer does (`flatten: false` keeps the alpha).
+- audit-composition no longer reports copies placed by an expression rig as loose copies.
+- Fixes found in a live After Effects 26.5 test: create-component keeps the instance in place when it crops (After Effects re-centres the anchor when a comp is resized); see-frame waits for frames, which After Effects writes after the script returns; text animators add their properties before setting them; Star and Polygon types; the new-blur default; .mogrt export references.
+
 ## 2.2.0 (2026-10-27)
 
 36 new tools, 229 in all.

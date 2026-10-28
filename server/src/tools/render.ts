@@ -17,7 +17,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { z } from 'zod';
 import type { JsonValue } from '../bridge/types.js';
-import { decodePng, encodePng, resizeImage, scalePngBuffer, targetSize, tileImages, type RgbaImage } from '../render/png.js';
+import { decodePng, encodePng, flattenImage, resizeImage, scalePngBuffer, targetSize, tileImages, type RgbaImage } from '../render/png.js';
 import { CompRef, TimeArgs } from '../schemas/common.js';
 import { defineTool, jsonResult, type ToolContext } from './registry.js';
 
@@ -36,6 +36,8 @@ interface FrameInfo {
   composition: { id: number; name: string };
   method: string;
   index?: number;
+  /** Composition background colour, RGB 0..1. */
+  background?: number[];
 }
 
 function asRecord(v: unknown): Record<string, unknown> {
@@ -54,6 +56,7 @@ function asFrameInfo(v: unknown): FrameInfo {
     composition: { id: Number(comp.id ?? 0), name: String(comp.name ?? '') },
     method: String(r.method ?? ''),
     index: r.index === undefined ? undefined : Number(r.index),
+    background: Array.isArray(r.background) && r.background.length >= 3 ? r.background.slice(0, 3).map(Number) : undefined,
   };
 }
 
@@ -80,6 +83,25 @@ function readFrameFile(file: string): Buffer | undefined {
     return fs.readFileSync(file);
   } catch {
     return undefined;
+  }
+}
+
+/** True when the buffer is a complete PNG (ends with the IEND chunk). */
+function isCompletePng(buf: Buffer): boolean {
+  return buf.length > 20 && buf.subarray(buf.length - 12, buf.length - 4).toString('latin1') === '\u0000\u0000\u0000\u0000IEND';
+}
+
+/**
+ * Waits for a frame file that After Effects writes after the script returns (saveFrameToPng is
+ * asynchronous on After Effects 2025 and later). Resolves with the complete PNG, or undefined.
+ */
+export async function waitForFrameFile(file: string, timeoutMs = Number(process.env.AE_MCP_FRAME_WAIT_MS ?? 60000)): Promise<Buffer | undefined> {
+  const end = Date.now() + timeoutMs;
+  for (;;) {
+    const buf = readFrameFile(file);
+    if (buf && isCompletePng(buf)) return buf;
+    if (Date.now() > end) return buf && buf.length ? buf : undefined;
+    await new Promise((r) => setTimeout(r, 100));
   }
 }
 
@@ -188,7 +210,7 @@ export function registerRenderTools(server: McpServer): void {
       'Use when: verifying a change, comparing before and after (call it twice), or describing what a composition looks like. Do not use for: files the human keeps (export-frame-png) or several moments at once (see-frames). ' +
       'Inputs: comp (default the active composition); time in seconds or frame (default the current time); scale 0.1 to 1 (default 0.5, keeps the payload small); maxWidth in pixels (default 1280) as a second cap; setCurrentTime (default true) also moves the playhead there; includeInfo (default true) adds a JSON block with the file path and sizes. ' +
       'Returns: an image content block (PNG) plus text with file, time, frame, width, height and the capture method. ' +
-      'Notes: the full-size PNG stays in the bridge frames folder until the server cleans it up. Capture uses saveFrameToPng (After Effects 22.3 and later) and falls back to a temporary render queue item on older versions, which is slower. Unverified against a real After Effects in this build. ' +
+      'Notes: transparent areas are shown over the composition background colour, as in the viewer (flatten false keeps the alpha). The full-size PNG stays in the bridge frames folder until the server cleans it up. Capture uses saveFrameToPng (After Effects 22.3 and later) and falls back to a temporary render queue item on older versions, which is slower. ' +
       'Example: after animating a title, see-frame with time 1.0 and check the title is fully on screen.',
     input: {
       comp: CompRef.optional(),
@@ -197,14 +219,15 @@ export function registerRenderTools(server: McpServer): void {
       maxWidth: z.number().int().min(16).max(8192).optional().describe('Cap on the returned image width in pixels. Default 1280.'),
       setCurrentTime: z.boolean().optional().describe('Move the playhead to the captured time. Default true.'),
       includeInfo: z.boolean().optional().describe('Add a JSON text block with file and size details. Default true.'),
+      flatten: z.boolean().optional().describe('Show the frame over the composition background colour, as the viewer does. Default true; false keeps transparency.'),
     },
     handler: async (args, ctx) => {
       const framesDir = ctx.bridge.paths.frames;
       const raw = await ctx.run('seeFrame', { comp: args.comp, time: args.time, frame: args.frame, setCurrentTime: args.setCurrentTime ?? true, outputDir: framesDir }, 'render');
       const info = asFrameInfo(raw);
-      const buf = readFrameFile(info.file);
+      const buf = await waitForFrameFile(info.file);
       if (!buf) return missingFrameResult('see-frame', info.file, framesDir, { bridgeResult: raw as JsonValue });
-      const scaled = scalePngBuffer(buf, args.scale ?? 0.5, args.maxWidth ?? 1280);
+      const scaled = scalePngBuffer(buf, args.scale ?? 0.5, args.maxWidth ?? 1280, args.flatten === false ? undefined : info.background);
       const text = {
         composition: info.composition,
         time: info.time,
@@ -233,7 +256,7 @@ export function registerRenderTools(server: McpServer): void {
       'Use when: verifying an animation (does the logo arrive by frame 30, is the fade smooth), or reviewing a whole composition quickly. Do not use for: one moment in detail (see-frame) or files for the human (export-still-sequence). ' +
       'Inputs: comp; count (default 4, evenly spaced over the composition, or the work area when useWorkArea is true) or explicit times[] in seconds or frames[]; columns (default min(count, 3)); scale 0.1 to 1 per tile (default 0.33); maxWidth for the whole sheet (default 1600); label (default true) draws a one pixel white border around each tile. At most 25 frames per call. ' +
       'Returns: one PNG image content block plus text with tiles[] mapping each tile index to its time, frame and pixel rectangle {x, y, w, h} in the sheet, reading left to right, top to bottom. ' +
-      'Notes: frame numbers are not drawn on the image; use the tiles[] map. Each frame is captured full size first, so 25 frames of a 4K composition takes a while. Unverified against a real After Effects in this build. ' +
+      'Notes: frame numbers are not drawn on the image; use the tiles[] map. Transparent areas are shown over the composition background colour (flatten false keeps the alpha). Each frame is captured full size first, so 25 frames of a 4K composition takes a while. ' +
       'Example: count 6, columns 3, useWorkArea true, then compare tile 0 with tile 5.',
     input: {
       comp: CompRef.optional(),
@@ -242,6 +265,7 @@ export function registerRenderTools(server: McpServer): void {
       scale: ScaleArg.describe('Downscale factor per tile, 0.1 to 1. Default 0.33.'),
       maxWidth: z.number().int().min(64).max(8192).optional().describe('Cap on the whole sheet width in pixels. Default 1600.'),
       label: z.boolean().optional().describe('Draw a one pixel border around each tile. Default true.'),
+      flatten: z.boolean().optional().describe('Show frames over the composition background colour, as the viewer does. Default true; false keeps transparency.'),
     },
     handler: async (args, ctx) => {
       const framesDir = ctx.bridge.paths.frames;
@@ -251,9 +275,10 @@ export function registerRenderTools(server: McpServer): void {
       if (frames.length === 0) return jsonResult({ tool: 'see-frames', error: 'no-frames', message: 'After Effects returned no frames.', bridgeResult: raw }, true);
       const images: RgbaImage[] = [];
       for (const f of frames) {
-        const buf = readFrameFile(f.file);
+        const buf = await waitForFrameFile(f.file);
         if (!buf) return missingFrameResult('see-frames', f.file, framesDir);
-        images.push(decodePng(buf));
+        const img = decodePng(buf);
+        images.push(args.flatten !== false && f.background ? flattenImage(img, f.background) : img);
       }
       const columns = args.columns ?? Math.min(frames.length, 3);
       const sheet = tileImages(images, { columns, scale: args.scale ?? 0.33, maxWidth: args.maxWidth ?? 1600, border: args.label !== false });
@@ -290,7 +315,7 @@ export function registerRenderTools(server: McpServer): void {
       'Use when: the human asks for a still, a thumbnail or a poster frame on disk. Do not use for: checking your own work (see-frame) or many frames (export-still-sequence). ' +
       'Inputs: comp; time in seconds or frame (default the current time); outputPath, an absolute path ending in .png (a leading ~ is expanded, folders are created); scale 0.1 to 1 (optional) downsizes the file on the server after the full-size capture. ' +
       'Returns: file, width, height, time, frame, the composition reference and the capture method. ' +
-      'Notes: the file is written at full composition size by After Effects first and only then downsized, so a scale below 1 costs a little extra time. An existing file at the path is replaced. Unverified against a real After Effects in this build. ' +
+      'Notes: the file is written at full composition size by After Effects first and only then downsized, so a scale below 1 costs a little extra time. An existing file at the path is replaced. ' +
       'Example: outputPath "~/Desktop/title-frame.png", frame 45.',
     input: {
       comp: CompRef.optional(),
@@ -303,6 +328,8 @@ export function registerRenderTools(server: McpServer): void {
       const raw = await ctx.run('exportFramePng', { comp: args.comp, time: args.time, frame: args.frame, outputPath }, 'render');
       const info = asFrameInfo(raw);
       const out: Record<string, unknown> = { ...asRecord(raw) };
+      const target = info.file || outputPath;
+      await waitForFrameFile(target);
       const file = fs.existsSync(info.file) ? info.file : fs.existsSync(outputPath) ? outputPath : undefined;
       if (!file) {
         return jsonResult({ tool: 'export-frame-png', error: 'frame-missing', message: `After Effects reported success but ${info.file || outputPath} does not exist on the server side.`, bridgeResult: raw }, true);
@@ -338,7 +365,7 @@ export function registerRenderTools(server: McpServer): void {
       'Use when: the human wants an image sequence, storyboard stills or every Nth frame on disk. Do not use for: a movie file (add-to-render-queue then render) or checking your own work (see-frames). ' +
       'Inputs: comp; outputDir (absolute, ~ expanded, created if missing); filePrefix (default the composition name); which frames: start and end in seconds (default the whole composition, or the work area with useWorkArea true) for every frame in that range, count for evenly spaced frames in that range, or explicit frames[] or times[]; format only "png"; scale 0.1 to 1 (optional, applied on the server); maxFrames cap (default 300) and allowLarge true to go past it. ' +
       'Returns: outputDir, count, method and files[] with index, frame, time and file, named <prefix>_<frame padded to 5 digits>.png. ' +
-      'Notes: each frame is a separate capture, so a 300 frame sequence can take minutes; the server waits with the render timeout. Existing files with the same names are replaced. Unverified against a real After Effects in this build. ' +
+      'Notes: each frame is a separate capture, so a 300 frame sequence can take minutes; the server waits with the render timeout. Existing files with the same names are replaced. ' +
       'Example: outputDir "~/Desktop/stills", count 12, useWorkArea true.',
     input: {
       comp: CompRef.optional(),
@@ -361,6 +388,9 @@ export function registerRenderTools(server: McpServer): void {
       const raw = await ctx.run('exportStillSequence', { ...rest, outputDir }, 'render');
       const result = { ...asRecord(raw) };
       const files = Array.isArray(result.files) ? (result.files as unknown[]).map(asRecord) : [];
+      for (const f of files) {
+        if (typeof f.file === 'string' && f.file) await waitForFrameFile(f.file);
+      }
       if (scale !== undefined && scale < 1) {
         let resizedCount = 0;
         for (const f of files) {

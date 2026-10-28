@@ -31,7 +31,10 @@ export function writeMockPng(file, width = MOCK_FRAME.width, height = MOCK_FRAME
       png.data[i] = onLine ? 255 : (40 + seed * 20) % 256;
       png.data[i + 1] = onLine ? 255 : 90;
       png.data[i + 2] = onLine ? 255 : 160;
-      png.data[i + 3] = 255;
+      // A transparent corner, as After Effects writes it: the background colour with alpha 0.
+      const clear = x < 4 && y < 4;
+      if (clear) png.data.set([13, 13, 15], i);
+      png.data[i + 3] = clear ? 0 : 255;
     }
   }
   fs.writeFileSync(file, PNG.sync.write(png));
@@ -45,7 +48,7 @@ function timeOf(args) {
 }
 
 function frameInfo(t, file, index) {
-  const out = { file, width: 1920, height: 1080, time: round4(t), frame: Math.round(t * FPS), composition: COMP, method: 'saveFrameToPng' };
+  const out = { file, width: 1920, height: 1080, time: round4(t), frame: Math.round(t * FPS), composition: COMP, method: 'saveFrameToPng', background: [0.2, 0.4, 0.6] };
   if (index !== undefined) out.index = index;
   return out;
 }

@@ -459,6 +459,9 @@ MCP.animate.blurProp = function (layer, amount, notes) {
         var rep = MCP.childProp(MCP.childProp(MCP.effectsGroup(layer), MCP.animate.BLUR_NAME), "ADBE Gaussian Blur 2-0003");
         if (rep) { try { rep.setValue(0); } catch (e1) {} }
         fx = MCP.childProp(MCP.effectsGroup(layer), MCP.animate.BLUR_NAME);
+        // A new Gaussian Blur is not at 0 on every version (25 on After Effects 26); the layer's resting look is unblurred.
+        var fresh = MCP.childProp(fx, "ADBE Gaussian Blur 2-0001");
+        if (fresh) { try { fresh.setValue(0); } catch (e2) {} }
     }
     var p = MCP.childProp(fx, "ADBE Gaussian Blur 2-0001");
     if (!p) { MCP.fail("The Blurriness property of '" + MCP.animate.BLUR_NAME + "' was not found.", "script-error"); }

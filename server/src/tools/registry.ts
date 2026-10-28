@@ -38,6 +38,11 @@ export type ToolGroup =
   | 'animate'
   | 'styles'
   | 'check'
+  | 'scenes'
+  | 'transitions'
+  | 'ui-demo'
+  | 'motion-rigs'
+  | 'charts'
   | 'help';
 
 export interface ToolContext {
