@@ -6,12 +6,15 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { z } from 'zod';
 import { toRgba } from '../schemas/color.js';
 import { CompRef, Easing, LayerRef, PropertyPath, TimeArgs, Vec2or3 } from '../schemas/common.js';
+import { getBridge } from '../bridge/client.js';
+import { componentFiles, ensureLocal, ensureLocalSync, isLocalFile, readTextWithin, type DownloadReport } from './cloud-files.js';
 import { defineTool } from './registry.js';
 
 /* ------------------------------------------------------------------ schemas */
@@ -181,13 +184,87 @@ export interface LibraryComponent {
   preview: string | null;
   poster: string | null;
   source: 'index' | 'folder';
+  /** false while the .aep is online-only (it downloads on insert), null when the platform cannot tell. */
+  local: boolean | null;
 }
 
 export interface LibraryScan {
   root: string;
   index: string | null;
+  /** Where the index came from: the file, the server's last copy of it (the file was online-only and slow to download), or none. */
+  indexSource: 'file' | 'cache' | 'none';
   components: LibraryComponent[];
   skipped: Array<{ path: string; reason: string }>;
+  notes: string[];
+}
+
+export interface IndexRead {
+  path: string;
+  exists: boolean;
+  text: string | null;
+  source: 'file' | 'cache' | 'none';
+  note: string | null;
+}
+
+/** How long a list or insert waits for an online-only library.json before using the server's last copy. */
+export function libraryWaitMs(): number {
+  const n = Number(process.env.AE_MCP_LIBRARY_WAIT_MS);
+  return Number.isFinite(n) && n >= 0 ? n : 20000;
+}
+
+function indexCachePath(root: string): string {
+  let dir: string;
+  try {
+    dir = getBridge().config.bridgeDir;
+  } catch {
+    dir = os.tmpdir();
+  }
+  const key = crypto.createHash('sha1').update(path.resolve(root)).digest('hex').slice(0, 16);
+  return path.join(dir, 'library-cache', `${key}.json`);
+}
+
+/** Keeps the server's copy of a library index, used when the real file is online-only and slow. */
+export function rememberIndex(root: string, text: string): void {
+  try {
+    const file = indexCachePath(root);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  } catch {
+    // the copy is only a fallback
+  }
+}
+
+function indexFallback(root: string, file: string, waitMs: number): IndexRead {
+  const why = waitMs > 0 ? `library.json is online-only and did not download within ${Math.round(waitMs / 1000)} s` : 'library.json is online-only';
+  const keep = 'Keep it on this device (in Finder: right-click library.json, Always Keep on This Device).';
+  const cache = indexCachePath(root);
+  try {
+    const text = fs.readFileSync(cache, 'utf8');
+    const when = fs.statSync(cache).mtime.toISOString();
+    return { path: file, exists: true, text, source: 'cache', note: `${why}, so the copy the server read at ${when} was used. ${keep}` };
+  } catch {
+    return { path: file, exists: true, text: null, source: 'none', note: `${why} and the server has no earlier copy. ${keep}` };
+  }
+}
+
+/** Reads library.json without hanging on an online-only copy: waits up to waitMs for the download, then falls back to the server's last copy. */
+export async function readLibraryIndex(root: string, waitMs = libraryWaitMs()): Promise<IndexRead> {
+  const file = path.join(root, 'library.json');
+  if (!isFile(file)) return { path: file, exists: false, text: null, source: 'none', note: null };
+  const text = await readTextWithin(file, waitMs);
+  if (text === null) return indexFallback(root, file, waitMs);
+  rememberIndex(root, text);
+  return { path: file, exists: true, text, source: 'file', note: null };
+}
+
+/** readLibraryIndex for synchronous callers: never waits for a download. */
+export function readLibraryIndexSync(root: string): IndexRead {
+  const file = path.join(root, 'library.json');
+  if (!isFile(file)) return { path: file, exists: false, text: null, source: 'none', note: null };
+  if (isLocalFile(file) === false) return indexFallback(root, file, 0);
+  const text = fs.readFileSync(file, 'utf8');
+  rememberIndex(root, text);
+  return { path: file, exists: true, text, source: 'file', note: null };
 }
 
 const PREVIEW_NAMES = ['preview.mp4', 'preview.mov', 'preview.webm', 'preview.gif'];
@@ -208,9 +285,17 @@ function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 
+function parseJsonText(text: string): { value?: unknown; error?: string } {
+  try {
+    return { value: JSON.parse(text) };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
 function readJsonFile(file: string): { value?: unknown; error?: string } {
   try {
-    return { value: JSON.parse(fs.readFileSync(file, 'utf8')) };
+    return parseJsonText(fs.readFileSync(file, 'utf8'));
   } catch (err) {
     return { error: (err as Error).message };
   }
@@ -264,12 +349,12 @@ function normaliseControls(raw: unknown): LibraryControl[] {
   return out;
 }
 
-/** Reads one component folder. library.json fields fill what component.json leaves out. */
+/** Reads one component folder. A library.json entry is used as it is; component.json is read only for folders library.json does not list, so online-only parts are not downloaded by a scan. */
 function readComponentFolder(dir: string, categoryHint: string | null, indexEntry: Record<string, unknown> | null): LibraryComponent | { reason: string } {
   if (!isDir(dir)) return { reason: 'folder not found' };
   let json: Record<string, unknown> = {};
   const jsonPath = path.join(dir, 'component.json');
-  if (isFile(jsonPath)) {
+  if (!indexEntry && isFile(jsonPath) && isLocalFile(jsonPath) !== false) {
     const parsed = readJsonFile(jsonPath);
     if (parsed.error) return { reason: `component.json is not valid JSON: ${parsed.error}` };
     if (!parsed.value || typeof parsed.value !== 'object' || Array.isArray(parsed.value)) return { reason: 'component.json must hold an object' };
@@ -308,11 +393,13 @@ function readComponentFolder(dir: string, categoryHint: string | null, indexEntr
     preview: preview && isFile(preview) ? preview : null,
     poster: poster && isFile(poster) ? poster : null,
     source: indexEntry ? 'index' : 'folder',
+    local: isLocalFile(aep),
   };
 }
 
 /** Scans a library: library.json entries first, then every component subfolder (one level of category folders allowed). */
-export function scanLibrary(root: string): LibraryScan {
+export function scanLibrary(root: string, read: IndexRead = readLibraryIndexSync(root)): LibraryScan {
+  const notes: string[] = read.note ? [read.note] : [];
   const components: LibraryComponent[] = [];
   const skipped: Array<{ path: string; reason: string }> = [];
   const seen = new Set<string>();
@@ -324,11 +411,11 @@ export function scanLibrary(root: string): LibraryScan {
     if ('reason' in res) skipped.push({ path: key, reason: res.reason });
     else components.push(res);
   };
-  let index: string | null = null;
-  const indexPath = path.join(root, 'library.json');
-  if (isFile(indexPath)) {
-    index = indexPath;
-    const parsed = readJsonFile(indexPath);
+  const indexPath = read.path;
+  const index: string | null = read.exists ? indexPath : null;
+  if (read.exists && read.text === null) skipped.push({ path: indexPath, reason: read.note ?? 'library.json could not be read' });
+  if (read.text !== null) {
+    const parsed = parseJsonText(read.text);
     const value = parsed.value;
     let entries: unknown[] | null = null;
     if (Array.isArray(value)) entries = value;
@@ -360,7 +447,7 @@ export function scanLibrary(root: string): LibraryScan {
     for (const sub of listDirs(dir).filter(looksLikeComponent)) add(sub, path.basename(dir), null);
   }
   components.sort((a, b) => (a.category ?? '').localeCompare(b.category ?? '', 'en') || a.name.localeCompare(b.name, 'en'));
-  return { root, index, components, skipped };
+  return { root, index, indexSource: read.source, components, skipped, notes };
 }
 
 function haystack(c: LibraryComponent): string {
@@ -403,7 +490,7 @@ export function prepareInsert(args: {
   values?: Record<string, unknown>;
   keyframes?: Array<{ value: unknown }>;
   [key: string]: unknown;
-}): { bridgeArgs: Record<string, unknown>; entry: LibraryComponent | null } {
+}, download: 'sync' | 'none' = 'none', scan?: LibraryScan): { bridgeArgs: Record<string, unknown>; entry: LibraryComponent | null; files: string[]; download: DownloadReport | null } {
   const { folder, aep, ...rest } = args;
   let entry: LibraryComponent | null = null;
   let aepPath: string;
@@ -413,13 +500,14 @@ export function prepareInsert(args: {
     if (!isFile(aepPath)) throw new Error(`.aep file not found: ${aepPath}`);
     compName = args.compName ?? args.component;
   } else {
-    entry = findLibraryComponent(scanLibrary(libraryRoot(folder)), args.component);
+    entry = findLibraryComponent(scan ?? scanLibrary(libraryRoot(folder)), args.component);
     aepPath = entry.aep;
     compName = args.compName ?? entry.comp;
   }
   const bridgeArgs = withHints({ ...rest, aepPath, compName, componentName: entry ? entry.name : args.component });
   delete (bridgeArgs as Record<string, unknown>).component;
-  return { bridgeArgs, entry };
+  const files = entry ? componentFiles(aepPath) : [aepPath];
+  return { bridgeArgs, entry, files, download: download === 'sync' ? ensureLocalSync(files) : null };
 }
 
 /* -------------------------------------------------------------------- tools */
@@ -608,11 +696,11 @@ export function registerComponentTools(server: McpServer): void {
     mutating: false,
     bridge: null,
     description:
-      'Lists the components in a component library folder without touching After Effects. A library is a folder with one subfolder per component holding <name>.aep and optionally component.json ({name, category, description, controls: [{label, type}], tags, comp}), preview.mp4 and poster.png; category subfolders one level deep and a top-level library.json index are also read. ' +
+      'Lists the components in a component library folder without touching After Effects. A library is a folder with one subfolder per component holding <name>.aep and optionally component.json ({name, category, description, controls: [{label, type}], tags, comp}), preview.mp4 and poster.png; category subfolders one level deep and a top-level library.json index (written by save-to-library) are also read. ' +
       'Use when: before insert-library-component, to find a component and its control labels. Do not use for: compositions already in the open project (list-compositions). ' +
       'Inputs: folder (default the AE_MCP_LIBRARY_DIR environment variable); category to filter by; query, words that must all appear in the name, category, description, tags or control labels; limit (default 100). ' +
-      'Returns: the library folder, the index file if any, total and matched counts, categories with counts, components [{name, category, description, tags, controls, comp, folder, aep, preview, poster}] and skipped folders with the reason. ' +
-      'Notes: read-only and runs on the server. component.json wins over library.json for the same field. ' +
+      'Returns: the library folder, the index file if any, total and matched counts, categories with counts, components [{name, category, description, tags, controls, comp, folder, aep, preview, poster, local}] and skipped folders with the reason. ' +
+      'Notes: read-only and runs on the server. A library.json entry is used as written, and component.json is read only for folders library.json does not list, so a library kept online-only in OneDrive or iCloud is listed without downloading its parts. local false means the part is online-only; insert-library-component downloads it first. ' +
       'Example: category "Buttons", query "primary".',
     input: {
       folder: z.string().min(1).optional().describe('Library folder. Default: AE_MCP_LIBRARY_DIR.'),
@@ -621,18 +709,21 @@ export function registerComponentTools(server: McpServer): void {
       limit: z.number().int().min(1).max(1000).optional().describe('Most components to return. Default 100.'),
     },
     handler: async (args) => {
-      const scan = scanLibrary(libraryRoot(args.folder));
+      const root = libraryRoot(args.folder);
+      const scan = scanLibrary(root, await readLibraryIndex(root));
       const matched = searchLibrary(scan.components, { category: args.category, query: args.query });
       const limit = args.limit ?? 100;
       return {
         folder: scan.root,
         index: scan.index,
+        indexSource: scan.indexSource,
         total: scan.components.length,
         matched: matched.length,
         truncated: matched.length > limit,
         categories: libraryCategories(scan.components),
         components: matched.slice(0, limit),
         skipped: scan.skipped,
+        notes: scan.notes,
       };
     },
   });
@@ -645,7 +736,7 @@ export function registerComponentTools(server: McpServer): void {
       'Use when: building a scene from saved components, such as a button or lower third kept in the library. Do not use for: components already in the project (add-component-instances) or footage files (import-file). ' +
       'Inputs: component, the library name or folder name; folder (default AE_MCP_LIBRARY_DIR); aep and compName to bypass the library; comp, the target; name; position; startTime or startFrame; duration or durationFrames; values {label: value}; keyframes; reuseImported (default true). ' +
       'Returns: the instance layer, the component comp, whether the .aep was imported now or reused, the project folder that holds it, the values written, the instance\'s Essential Properties and the library entry. ' +
-      'Notes: the main comp is component.json "comp" or the comp named like the component. An unknown label removes the new instance and fails; the import stays for reuse. Missing fonts or footage inside the .aep can show warnings. Undoable in one step. ' +
+      'Notes: the main comp is the library entry\'s "comp" or the comp named like the component. A part kept online-only by OneDrive, iCloud or Dropbox (with its footage folder) is downloaded on the server before After Effects opens it; the result says what was downloaded. An unknown label removes the new instance and fails; the import stays for reuse. Missing fonts or footage inside the .aep can show warnings. Undoable in one step. ' +
       'Example: component "Primary Button", position [960, 800], values {"Label": "Start free trial"}.',
     input: {
       comp: CompRef.optional().describe('Target composition. Default: the active composition.'),
@@ -663,11 +754,14 @@ export function registerComponentTools(server: McpServer): void {
       keyframes: z.array(OverrideKeyframe).max(100).optional(),
       reuseImported: z.boolean().optional().describe('Reuse a copy of the same .aep already imported into this project. Default true.'),
     },
-    toBridgeArgs: (args) => prepareInsert(args).bridgeArgs,
+    toBridgeArgs: (args) => prepareInsert(args, 'sync').bridgeArgs,
     handler: async (args, ctx) => {
-      const { bridgeArgs, entry } = prepareInsert(args);
+      const root = args.aep ? null : libraryRoot(args.folder);
+      const scan = root ? scanLibrary(root, await readLibraryIndex(root)) : undefined;
+      const { bridgeArgs, entry, files } = prepareInsert(args, 'none', scan);
+      const download = await ensureLocal(files);
       const result = await ctx.run('insertLibraryComponent', bridgeArgs);
-      if (result && typeof result === 'object' && !Array.isArray(result)) return { ...result, libraryEntry: entry };
+      if (result && typeof result === 'object' && !Array.isArray(result)) return { ...result, libraryEntry: entry, download };
       return result;
     },
   });

@@ -2,6 +2,10 @@
  * Mock result shapes for the components commands. See core.js for helpers and shapes to mirror.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+import { writeMockPng } from './render.js';
+
 const comp = (name = 'Main Comp', id = 1) => ({ id, name });
 const layerRef = (index = 1, name = 'Button') => ({ index, id: 100 + index, name });
 
@@ -298,6 +302,42 @@ export const responses = {
       projectFile: '/tmp/components-test.aep',
       essentialPropertyCount: KNOWN.length,
       notes: [],
+    };
+  },
+
+  libraryPoster: (args) => {
+    writeMockPng(String(args.outputPath));
+    return {
+      file: String(args.outputPath),
+      width: 1920,
+      height: 1080,
+      time: args.time ?? 5,
+      frame: 150,
+      composition: comp(args.comp?.name ?? 'Button', 20),
+      method: 'saveFrameToPng',
+      background: [0.05, 0.05, 0.06],
+      component: compInfo(args.comp?.name ?? 'Button'),
+      folderPath: ['Components'],
+      projectFile: globalThis.__mockProjectFile === undefined ? '/tmp/components-test.aep' : globalThis.__mockProjectFile,
+      dirty: globalThis.__mockProjectDirty ?? false,
+    };
+  },
+
+  saveLibraryComponent: (args) => {
+    fs.mkdirSync(path.dirname(String(args.aepPath)), { recursive: true });
+    fs.writeFileSync(String(args.aepPath), 'aep');
+    return {
+      aep: String(args.aepPath),
+      bytes: 3,
+      component: compInfo(args.comp?.name ?? 'Button'),
+      controls: KNOWN.map((label) => ({ label, type: label === 'Fill' ? 'color' : 'text', value: null })),
+      fonts: [{ font: 'Inter-Medium', family: 'Inter', style: 'Medium' }],
+      footage: { copied: ['footage/avatar.png'], kept: [], missing: [] },
+      counts: { items: 4, itemsRemoved: 12, compositions: 2, layers: 9 },
+      settings: { bitsPerChannel: 8 },
+      sourceProject: '/tmp/components-test.aep',
+      sourceFolders: ['Components'],
+      reopened: args.reopen !== false,
     };
   },
 

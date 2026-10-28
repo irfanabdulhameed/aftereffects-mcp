@@ -1118,3 +1118,218 @@ MCP.register("insertLibraryComponent", function (args) {
         notes: notes
     };
 }, { mutating: true });
+
+/* ------------------------------------------------------- save to library */
+
+/** Folder names from the project root down to an item's folder. */
+MCP.components.folderPath = function (item) {
+    var names = [], f = _mcpTry(function () { return item.parentFolder; }, null), guard = 0;
+    while (f && f.id !== app.project.rootFolder.id && guard++ < 40) {
+        names.unshift(f.name);
+        f = f.parentFolder;
+    }
+    return names;
+};
+
+/** The comp at the same folder path inside an imported project folder, else the only comp with that name. */
+MCP.components.findInImport = function (root, folderNames, name) {
+    var cur = root, i, j;
+    for (i = 0; i < folderNames.length && cur; i++) {
+        var next = null;
+        for (j = 1; j <= cur.numItems; j++) {
+            if (cur.item(j) instanceof FolderItem && cur.item(j).name === folderNames[i]) { next = cur.item(j); break; }
+        }
+        cur = next;
+    }
+    if (cur) {
+        for (j = 1; j <= cur.numItems; j++) {
+            if (cur.item(j) instanceof CompItem && cur.item(j).name === name) { return cur.item(j); }
+        }
+    }
+    var all = MCP.components.compsIn(root, [], 0), hits = [];
+    for (i = 0; i < all.length; i++) { if (all[i].name === name) { hits.push(all[i]); } }
+    return hits.length === 1 ? hits[0] : null;
+};
+
+/** Project settings that an imported project does not bring with it. */
+MCP.components.projectSettings = function () {
+    var keys = ["bitsPerChannel", "expressionEngine", "workingSpace", "linearBlending", "linearizeWorkingSpace", "framesCountType", "timeDisplayType", "feetFramesFilmType", "footageTimecodeDisplayStartType"];
+    var out = {};
+    for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        var v = _mcpTry(function () { return app.project[k]; }, undefined);
+        if (v !== undefined && v !== null) { out[k] = v; }
+    }
+    return out;
+};
+
+MCP.components.applyProjectSettings = function (settings) {
+    for (var k in settings) {
+        if (settings.hasOwnProperty(k)) {
+            try { app.project[k] = settings[k]; } catch (e) {}
+        }
+    }
+};
+
+/** Copies each footage file into dir and points the item at the copy. Image sequences and missing files stay as they are. */
+MCP.components.collectFootage = function (dir) {
+    var out = { copied: [], kept: [], missing: [] };
+    var folder = new Folder(dir), byPath = {}, usedNames = {};
+    for (var i = 1; i <= app.project.numItems; i++) {
+        var it = app.project.item(i);
+        if (!(it instanceof FootageItem)) { continue; }
+        var src = _mcpTry(function () { return it.mainSource; }, null);
+        if (!(src instanceof FileSource)) { continue; }
+        var f = _mcpTry(function () { return src.file; }, null);
+        if (_mcpTry(function () { return it.footageMissing; }, false) || !f || !f.exists) { out.missing.push(it.name); continue; }
+        var still = _mcpTry(function () { return src.isStill; }, true);
+        if (!still && /\.(png|jpe?g|tiff?|tga|exr|dpx|bmp|psd)$/i.test(f.name) && _mcpTry(function () { return it.duration > 0; }, false)) {
+            out.kept.push({ name: it.name, file: f.fsName, reason: "image sequence" });
+            continue;
+        }
+        var dest = byPath[f.fsName];
+        if (!dest) {
+            if (!folder.exists) { folder.create(); }
+            var base = MCP.components.fileName(f), dot = base.lastIndexOf("."), stem = dot > 0 ? base.substring(0, dot) : base, ext = dot > 0 ? base.substring(dot) : "";
+            var name = base, k = 2;
+            while (usedNames[name.toLowerCase()]) { name = stem + " " + k + ext; k++; }
+            usedNames[name.toLowerCase()] = true;
+            dest = new File(folder.fsName + "/" + name);
+            if (!f.copy(dest.fsName)) { out.missing.push(it.name + " (copy failed)"); continue; }
+            byPath[f.fsName] = dest;
+            out.copied.push("footage/" + name);
+        }
+        try { it.replace(dest); } catch (e) { out.kept.push({ name: it.name, file: f.fsName, reason: "replace failed: " + e.message }); }
+    }
+    return out;
+};
+
+/** Fonts used by text layers in the project: [{font, family, style}]. */
+MCP.components.fontsUsed = function () {
+    var seen = {}, out = [];
+    for (var i = 1; i <= app.project.numItems; i++) {
+        var c = app.project.item(i);
+        if (!(c instanceof CompItem)) { continue; }
+        for (var j = 1; j <= c.numLayers; j++) {
+            var L = c.layer(j);
+            if (!(L instanceof TextLayer)) { continue; }
+            var td = _mcpTry(function () { return L.property("ADBE Text Properties").property("ADBE Text Document").value; }, null);
+            if (!td) { continue; }
+            var font = _mcpTry(function () { return String(td.font); }, "");
+            if (!font || seen[font]) { continue; }
+            seen[font] = true;
+            out.push({ font: font, family: _mcpTry(function () { return String(td.fontFamily); }, null), style: _mcpTry(function () { return String(td.fontStyle); }, null) });
+        }
+    }
+    return out;
+};
+
+/** Moves the main comp to the root, the rest into one "Parts" folder, and removes empty folders. */
+MCP.components.tidyPart = function (main) {
+    main.parentFolder = app.project.rootFolder;
+    var parts = null, i, it, moved = true, guard = 0;
+    var items = [];
+    for (i = 1; i <= app.project.numItems; i++) { items.push(app.project.item(i)); }
+    for (i = 0; i < items.length; i++) {
+        it = items[i];
+        if (it.id === main.id || it instanceof FolderItem) { continue; }
+        if (!parts) { parts = app.project.items.addFolder("Parts"); }
+        try { it.parentFolder = parts; } catch (e) {}
+    }
+    while (moved && guard++ < 20) {
+        moved = false;
+        for (i = app.project.numItems; i >= 1; i--) {
+            it = app.project.item(i);
+            if (it instanceof FolderItem && it.numItems === 0) { it.remove(); moved = true; }
+        }
+    }
+};
+
+MCP.register("libraryPoster", function (args) {
+    var comp = MCP.resolveComp(args.comp);
+    var outputPath = String(MCP.requireArg(args, "outputPath"));
+    var t = MCP.isDefined(args.time) || MCP.isDefined(args.frame) ? MCP.timeArg(comp, args) : comp.duration / 2;
+    t = MCP.render.clampTime(comp, t);
+    var method = MCP.render.saveFrame(comp, t, outputPath);
+    var info = MCP.render.frameInfo(comp, t, MCP.frameOf(comp, t), new File(outputPath).fsName, method);
+    info.component = MCP.components.compInfo(comp);
+    info.folderPath = MCP.components.folderPath(comp);
+    info.projectFile = _mcpTry(function () { return app.project.file ? app.project.file.fsName : null; }, null);
+    info.dirty = MCP.project.isDirty();
+    return info;
+}, { mutating: false });
+
+MCP.register("saveLibraryComponent", function (args) {
+    var comp = MCP.resolveComp(args.comp);
+    var aepPath = String(MCP.requireArg(args, "aepPath"));
+    var footageDir = String(MCP.requireArg(args, "footageDir"));
+    var reopen = MCP.bool(args.reopen, true);
+    var src = app.project.file;
+    if (!src) { MCP.fail("Save the project first: save-to-library reads the saved project file, so an untitled project cannot be used.", "invalid-argument"); }
+    var dirty = MCP.project.isDirty();
+    if (dirty !== false) {
+        if (!MCP.bool(args.saveFirst, false)) {
+            MCP.fail("The open project '" + MCP.components.fileName(src) + "' has unsaved changes. Call save-project first, or pass saveFirst: true. save-to-library closes and reopens the project, so unsaved changes would be lost.", "invalid-argument");
+        }
+        app.project.save();
+    }
+    var compName = comp.name, folderNames = MCP.components.folderPath(comp), settings = MCP.components.projectSettings();
+    var result = null, failure = null, reopened = false, reopenError = null;
+    app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+    try {
+        app.newProject();
+        MCP.components.applyProjectSettings(settings);
+        var io = new ImportOptions(src);
+        try { if (io.canImportAs(ImportAsType.PROJECT)) { io.importAs = ImportAsType.PROJECT; } } catch (e0) {}
+        var root = app.project.importFile(io);
+        var main = (root instanceof FolderItem) ? MCP.components.findInImport(root, folderNames, compName) : null;
+        if (!main) { MCP.fail("After importing the project, the composition '" + compName + "' could not be found (two compositions may share its name and folder).", "not-found"); }
+        var before = app.project.numItems;
+        app.project.reduceProject([main]);
+        MCP.components.tidyPart(main);
+        var footage = MCP.components.collectFootage(footageDir);
+        var controls = [];
+        var probe = app.project.items.addComp("__mcp_controls", 100, 100, 1, 1, 30);
+        try {
+            var inst = probe.layers.add(main);
+            var leaves = MCP.components.describeInstance(inst);
+            for (var i = 0; i < leaves.length; i++) { controls.push({ label: leaves[i].label, type: leaves[i].valueType, value: leaves[i].value }); }
+        } catch (e1) {}
+        try { probe.remove(); } catch (e2) {}
+        var comps = 0, layers = 0;
+        for (var k = 1; k <= app.project.numItems; k++) {
+            var it = app.project.item(k);
+            if (it instanceof CompItem) { comps++; layers += it.numLayers; }
+        }
+        var info = MCP.components.compInfo(main);
+        var fonts = MCP.components.fontsUsed();
+        var out = new File(aepPath);
+        if (!out.parent.exists) { out.parent.create(); }
+        app.project.save(out);
+        result = {
+            aep: out.fsName,
+            bytes: out.length,
+            component: info,
+            controls: controls,
+            fonts: fonts,
+            footage: footage,
+            counts: { items: app.project.numItems, itemsRemoved: before - app.project.numItems, compositions: comps, layers: layers },
+            settings: settings,
+            sourceProject: src.fsName,
+            sourceFolders: folderNames
+        };
+    } catch (e) {
+        failure = e;
+    }
+    try { app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES); } catch (e3) {}
+    if (reopen) {
+        try { reopened = !!app.open(src); } catch (e4) { reopenError = e4.message; }
+    }
+    if (failure) {
+        var tail = reopen ? (reopened ? " The original project was reopened." : " Reopening the original project also failed: open it again with open-project.") : "";
+        MCP.fail("Saving '" + compName + "' to the library failed: " + (failure.message || String(failure)) + tail, failure.mcpCode || "script-error", failure.mcpDetails);
+    }
+    result.reopened = reopened;
+    if (reopenError) { result.reopenError = reopenError; }
+    return result;
+}, { mutating: true });

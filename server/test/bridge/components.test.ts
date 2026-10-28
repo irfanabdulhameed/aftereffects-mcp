@@ -304,12 +304,13 @@ describe('component tools through the MCP server and the mock bridge', () => {
     expect(tb.mock.state.commandsRun).toBe(before);
   });
 
-  it('list-library-components reads a library.json index, with component.json winning', async () => {
+  it('list-library-components reads a library.json index as written, without opening component.json', async () => {
     const r = await callTool(client, 'list-library-components', { folder: indexedLib });
     expect(r.json.index).toBe(path.join(indexedLib, 'library.json'));
-    const comps = r.json.components as Array<{ name: string; description: string; category: string; comp: string; aep: string; source: string; tags: string[] }>;
+    const comps = r.json.components as Array<{ name: string; description: string; category: string; comp: string; aep: string; source: string; tags: string[]; local: boolean | null }>;
     expect(comps).toHaveLength(1);
-    expect(comps[0]).toMatchObject({ name: 'Feature Card', description: 'From component.json', category: 'Cards', comp: 'Card Main', source: 'index', tags: ['grid'] });
+    expect(comps[0]).toMatchObject({ name: 'Feature Card', description: 'From the index', category: 'Cards', comp: 'Card Main', source: 'index', tags: ['grid'] });
+    if (process.platform !== 'win32') expect(comps[0].local).toBe(true);
     expect(comps[0].aep).toBe(path.join(indexedLib, 'cards', 'card-a', 'card.aep'));
   });
 
