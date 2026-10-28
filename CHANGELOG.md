@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.6.3 (2026-10-28)
+
+import-figma matches the design more closely (checked against Figma's own render: under 1 % of pixels differ on a dashboard page):
+
+- Text is placed where Figma draws its letters (absoluteRenderBounds), and Figma's text case (upper, lower, title) is applied.
+- Inter maps to the optical-size cut Figma shows at that size (Inter 18pt, 24pt, 28pt or Inter Display), and fonts After Effects substitutes are reported (checked against its font list).
+- Comps of frames that do not clip in Figma get room around them, so text is never cut; left-aligned text starts exactly at Figma's position.
+
 ## 2.6.2 (2026-10-28)
 
 import-figma builds an organised project instead of one flat comp:

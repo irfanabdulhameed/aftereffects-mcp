@@ -25,6 +25,8 @@ export interface LayerSpec {
   id: string;
   /** Id of the group (comp) this layer goes into; null for the frame's own comp. */
   parent: string | null;
+  /** group: pixels of room around the comp so content that Figma lets overflow (no clipping) is not cut. */
+  pad?: number;
   /** Colour label: comp, text, shape, overlay, image. */
   role?: 'comp' | 'text' | 'shape' | 'overlay' | 'image';
   name: string;
@@ -41,6 +43,8 @@ export interface LayerSpec {
   paths?: AeShapePath[];
   strokePaths?: AeShapePath[];
   fillRule?: 'non-zero' | 'even-odd';
+  /** Where Figma draws the letters (absoluteRenderBounds), relative to the frame: text is placed so its letters land there. */
+  ink?: { x: number; y: number; w: number; h: number };
   text?: { characters: string; font: string | null; family: string | null; style: string | null; size: number; tracking: number; leading: number | null; align: 'left' | 'center' | 'right'; box: boolean; color: Rgba };
   image?: { ref: string; file?: string };
   blur?: number;
@@ -285,6 +289,7 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
       if (own) {
         const g = base(n, 'group', here, inherited);
         g.role = 'comp';
+        g.pad = n.clipsContent ? 0 : S(8);
         layers.push(g);
         parent = g.id;
       }
@@ -319,9 +324,15 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
       const st = n.style ?? {};
       const size = Number(st.fontSize ?? 16);
       const color = firstFill(n.fills, notes, here) ?? [0, 0, 0, 1];
+      const rb = n.absoluteRenderBounds;
+      if (rb && rb.width > 0) spec.ink = { x: S(rb.x - ox), y: S(rb.y - oy), w: S(rb.width), h: S(rb.height) };
+      const raw = String(n.characters ?? '');
+      const tc = String(st.textCase ?? 'ORIGINAL');
+      const cased = tc === 'UPPER' ? raw.toUpperCase() : tc === 'LOWER' ? raw.toLowerCase() : tc === 'TITLE' ? raw.replace(/\b\w/g, (c) => c.toUpperCase()) : raw;
+      if (tc === 'SMALL_CAPS' || tc === 'SMALL_CAPS_FORCED') notes.push(`${here}: small caps drawn as typed.`);
       spec.text = {
-        characters: String(n.characters ?? ''),
-        font: st.fontPostScriptName ?? null,
+        characters: cased,
+        font: interCut(st.fontPostScriptName ?? null, st.fontFamily ?? null, size),
         family: st.fontFamily ?? null,
         style: st.fontStyle ?? null,
         size: S(size),
@@ -400,6 +411,17 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
     notes: [...new Set(notes)],
     imageRefs: [...imageRefs],
   };
+}
+
+/**
+ * Figma's Inter is a variable font whose optical size follows the type size; desktop installs ship it as fixed cuts
+ * (Inter 18pt, 24pt, 28pt and Inter Display). Picks the cut Figma would show at this size.
+ */
+export function interCut(postScript: string | null, family: string | null, size: number): string | null {
+  if (!postScript || family !== 'Inter') return postScript;
+  const style = postScript.replace(/^Inter-?/, '') || 'Regular';
+  const cut = size < 21 ? 'Inter18pt' : size < 26 ? 'Inter24pt' : size < 30 ? 'Inter28pt' : 'InterDisplay';
+  return `${cut}-${style}`;
 }
 
 /** The node to build from a REST response, a {document} wrapper or a bare node. */

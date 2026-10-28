@@ -189,8 +189,10 @@ MCP.figma.text = function (comp, s, notes, missing) {
     }
     doc.justification = t.align === "center" ? ParagraphJustification.CENTER_JUSTIFY : (t.align === "right" ? ParagraphJustification.RIGHT_JUSTIFY : ParagraphJustification.LEFT_JUSTIFY);
     prop.setValue(doc);
+    // After Effects keeps the requested name even when it substitutes, so ask its font list (26+) whether the font exists.
+    var have = _mcpTry(function () { return app.fonts.getFontsByPostScriptName(t.font).length > 0; }, null);
     var got = _mcpTry(function () { return String(prop.value.font); }, "");
-    if (t.font && got !== t.font) { missing[t.font] = (t.family || t.font) + (t.style ? " " + t.style : ""); }
+    if (t.font && (have === false || got !== t.font)) { missing[t.font] = (t.family || t.font) + (t.style ? " " + t.style : ""); }
     if (c[3] < 1) { layer.property("ADBE Transform Group").property("ADBE Opacity").setValue(s.opacity * c[3]); }
     // Align the measured text to the Figma box: box text by its box, point text by its glyphs.
     var r = layer.sourceRectAtTime(0, false);
@@ -200,13 +202,22 @@ MCP.figma.text = function (comp, s, notes, missing) {
     else if (t.align === "center") { targetX = s.x + s.w / 2; rx = r.left + r.width / 2; }
     else if (t.align === "right") { targetX = s.x + s.w; rx = r.left + r.width; }
     else { targetX = s.x; rx = r.left; }
+    // Exact: put the letters where Figma draws them (its render bounds); sourceRectAtTime gives the letters' bounds here too.
+    if (s.ink) {
+        tg.property("ADBE Position").setValue([s.ink.x - r.left, s.ink.y - r.top]);
+        if (s.rotation) { tg.property("ADBE Rotate Z").setValue(s.rotation); }
+        if (s.opacity < 100 && c[3] >= 1) { tg.property("ADBE Opacity").setValue(s.opacity); }
+        return layer;
+    }
     // Text layers keep their anchor at [0, 0], so a layer-space point lands at position + point.
     // Box text is placed by its box (sourceRectAtTime gives the glyphs, not the box): the box's top-left in
     // layer space is boxTextPos where After Effects has it, else the box is centred on the anchor.
     if (t.box) {
         var bp = _mcpTry(function () { return prop.value.boxTextPos; }, null);
         var left = bp ? bp[0] : -bw / 2, top = bp ? bp[1] : -bh / 2;
-        tg.property("ADBE Position").setValue([s.x - left - 2, s.y - top]);
+        // The box is 4 px wider than Figma's: the extra goes after the text (right for left-aligned, both sides when centred).
+        var shift = t.align === "center" ? 2 : (t.align === "right" ? 4 : 0);
+        tg.property("ADBE Position").setValue([s.x - left - shift, s.y - top]);
     } else {
         tg.property("ADBE Position").setValue([targetX - rx, (s.y + s.h / 2) - (r.top + r.height / 2)]);
     }
@@ -277,11 +288,13 @@ MCP.register("buildFigma", function (args) {
         var g = specs[i];
         if (g.kind !== "group") { continue; }
         if (!compsFolder) { compsFolder = app.project.items.addFolder("Components"); compsFolder.parentFolder = folder; }
-        var c = app.project.items.addComp(String(g.name), Math.max(4, Math.round(g.w)), Math.max(4, Math.round(g.h)), 1, dur, fps);
+        // Frames that do not clip in Figma get room around them, so text that renders a little wider is not cut.
+        var pad = Number(g.pad) || 0;
+        var c = app.project.items.addComp(String(g.name), Math.max(4, Math.round(g.w + 2 * pad)), Math.max(4, Math.round(g.h + 2 * pad)), 1, dur, fps);
         c.parentFolder = folderFor(g);
         c.bgColor = root.bgColor;
         comps[g.id] = c;
-        origins[g.id] = [g.x, g.y];
+        origins[g.id] = [g.x - pad, g.y - pad];
     }
     if (created && frame.background) {
         var bg = root.layers.addSolid([frame.background[0], frame.background[1], frame.background[2]], "Background", root.width, root.height, 1, root.duration);
@@ -298,6 +311,7 @@ MCP.register("buildFigma", function (args) {
         for (var k in s) { if (s.hasOwnProperty(k)) { local[k] = s[k]; } }
         local.x = s.x - o[0];
         local.y = s.y - o[1];
+        if (s.ink) { local.ink = { x: s.ink.x - o[0], y: s.ink.y - o[1], w: s.ink.w, h: s.ink.h }; }
         try {
             var L;
             if (s.kind === "group") {
