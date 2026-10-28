@@ -22,6 +22,61 @@ const LayersSpec = z
 
 export function registerCamera3dTools(server: McpServer): void {
   defineTool(server, {
+    name: 'create-camera-rig',
+    group: 'camera-3d',
+    description:
+      'Builds a camera rig: a 3D control null at the target point carrying sliders for Orbit, Tilt, Roll, Push, Truck, Pedestal and Drift plus depth of field (Aperture, Blur Level, Focus Distance or a Focus Layer to follow), and a one-node camera parented to it whose lens comes from a focal length. Every move is then two eased keys on one control (animate-camera-rig). ' +
+      'Use when: a scene needs orbits, push-ins, dollies, cranes, a handheld drift or rack focus, for example filming a UI plane like a physical screen. Do not use for: one quick push on the content without a camera (add-camera-push) or setting an existing camera (set-camera-settings). ' +
+      'Inputs: name (default "Camera Rig"); focalLength in mm (default 35; 50 natural, 85 to 200 long lens) or zoom in px; target layer or targetPoint (default the comp centre) to orbit around; layers3D, "all" or a list, switched to 3D (precomps also get Collapse Transformations); depthOfField (default false), aperture (default 60), blurLevel (default 100); focusLayer to keep sharp; drift in px for a slow handheld wander (default 0). ' +
+      'Returns: the rig null, the camera, zoom and focal length, the target, the control names and the layers made 3D. ' +
+      'Notes: only 3D layers see a camera. Push moves the camera along its axis, so depth and perspective change as on a real dolly. A long lens needs a larger Aperture for the same blur. Undoable in one step. ' +
+      'Example: focalLength 85, layers3D "all", depthOfField true, aperture 120, drift 4.',
+    input: {
+      comp: CompRef.optional(),
+      name: z.string().min(1).optional().describe('Rig null name. Default "Camera Rig"; the camera is "<name> Camera".'),
+      focalLength: z.number().positive().max(2000).optional().describe('Lens in mm on a 36 mm film back. Default 35.'),
+      zoom: z.number().positive().optional().describe('Camera zoom in pixels; wins over focalLength.'),
+      target: LayerRef.optional().describe('Layer whose position the rig orbits around.'),
+      targetPoint: z.array(z.number()).min(2).max(3).optional().describe('[x, y] or [x, y, z] to orbit around. Default the comp centre.'),
+      layers3D: z.union([z.literal('all'), z.array(LayerRef).max(500)]).optional().describe('"all" or layers to switch to 3D so the camera sees them.'),
+      depthOfField: z.boolean().optional().describe('Depth of field on. Default false.'),
+      aperture: z.number().min(0).optional().describe('Aperture in pixels; larger = shallower focus. Default 60.'),
+      blurLevel: z.number().min(0).optional().describe('Blur Level percent. Default 100.'),
+      focusLayer: LayerRef.optional().describe('Layer the focus follows (sets Follow Focus Layer on).'),
+      drift: z.number().min(0).max(200).optional().describe('Handheld drift in pixels. Default 0.'),
+    },
+  });
+
+  defineTool(server, {
+    name: 'animate-camera-rig',
+    group: 'camera-3d',
+    description:
+      'Moves a camera rig made by create-camera-rig with two eased keys on one of its controls: orbit, tilt or roll (degrees), push-in or pull-out (pixels toward or away from the target), truck (sideways), pedestal (up or down), drift (handheld amount) or rack-focus (Focus Distance to the distance of another layer at the end of the move). ' +
+      'Use when: a shot needs a camera move or a focus pull. Several moves can overlap: each keys its own control, so an orbit and a push-in run together without a third key in the middle. Do not use for: content that moves by itself (animate-property). ' +
+      'Inputs: rig (default the layer named "Camera Rig"); move; amount added to the control (defaults: orbit 30, tilt 10, roll 5, push-in 400, pull-out -400, truck 300, pedestal -200, drift 6) or to, an absolute value; focusOn for rack-focus (amount then adds a focus offset); startTime or startFrame (default 0); duration (default 3 s orbit, 2 s others) or durationFrames; easing (default a landing: speed 0, influence 25 leaving and 100 arriving). ' +
+      'Returns: the control keyed, from and to values, the key times and notes. ' +
+      'Notes: rack-focus switches the rig to its Focus Distance slider (Follow Focus Layer off) and measures the distance with the camera and layer as they are at the end time. Depth of Field must be on for focus to show. Undoable in one step. ' +
+      'Example: move "push-in", amount 600, startTime 1, duration 2.5.',
+    input: {
+      comp: CompRef.optional(),
+      rig: LayerRef.optional().describe('The rig null. Default {name: "Camera Rig"}.'),
+      move: z.enum(['orbit', 'tilt', 'roll', 'push-in', 'pull-out', 'truck', 'pedestal', 'drift', 'rack-focus']).describe('What to move.'),
+      amount: z.number().optional().describe('Change added to the control at the start time.'),
+      to: z.number().optional().describe('Absolute end value for the control; wins over amount.'),
+      focusOn: LayerRef.optional().describe('rack-focus: the layer to bring into focus.'),
+      startTime: z.number().optional().describe('Seconds. Default 0.'),
+      startFrame: z.number().int().optional().describe('Frames; wins over startTime.'),
+      duration: z.number().positive().optional().describe('Seconds. Default 3 for orbit, 2 for the others.'),
+      durationFrames: z.number().int().positive().optional().describe('Frames; wins over duration.'),
+      easing: Easing.optional(),
+    },
+    toBridgeArgs: (args) => {
+      if (args.move === 'rack-focus' && !args.focusOn) throw new Error('rack-focus needs focusOn: the layer to bring into focus.');
+      return args;
+    },
+  });
+
+  defineTool(server, {
     name: 'set-camera-settings',
     group: 'camera-3d',
     description:

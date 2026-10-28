@@ -107,4 +107,29 @@ export const responses = {
     }
     return { ...base, property: property('Transform/Point of Interest', [960, 540, 0]), value: [960, 540, 0], keyIndex: args.time !== undefined || args.frame !== undefined ? 1 : null };
   },
+
+  createCameraRig: (args) => ({
+    composition: { id: 1, name: 'Main Comp' },
+    rig: { index: 1, id: 90, name: args.name ?? 'Camera Rig' },
+    camera: { index: 2, id: 91, name: `${args.name ?? 'Camera Rig'} Camera` },
+    zoom: args.zoom ?? (1920 * (args.focalLength ?? 35)) / 36,
+    focalLengthMm: args.focalLength ?? 35,
+    target: [960, 540, 0],
+    controls: ['Orbit', 'Tilt', 'Roll', 'Push', 'Truck', 'Pedestal', 'Drift', 'Depth of Field', 'Aperture', 'Blur Level', 'Focus Distance', 'Follow Focus Layer', 'Focus Layer', 'Focus Offset'],
+    madeThreeD: args.layers3D ? [{ index: 3, id: 3, name: 'Card' }] : [],
+    notes: [],
+  }),
+
+  animateCameraRig: (args) => ({
+    composition: { id: 1, name: 'Main Comp' },
+    rig: { index: 1, id: 90, name: 'Camera Rig' },
+    move: args.move,
+    control: args.move === 'rack-focus' ? 'Focus Distance' : 'Push',
+    from: 0,
+    to: args.to ?? args.amount ?? 400,
+    startTime: args.startTime ?? 0,
+    endTime: (args.startTime ?? 0) + (args.duration ?? 2),
+    keys: [],
+    notes: [],
+  }),
 };

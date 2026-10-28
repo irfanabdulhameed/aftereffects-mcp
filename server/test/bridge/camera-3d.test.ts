@@ -105,3 +105,16 @@ describe('camera-3d tools', () => {
     await rejectedBeforeSend('look-at-layer', { layer: { index: 1 } });
   });
 });
+
+describe('camera rig', () => {
+  it('builds a rig and refuses a rack focus without a layer', async () => {
+    const r = await callTool(client, 'create-camera-rig', { focalLength: 85, layers3D: 'all', depthOfField: true });
+    expect(r.isError, r.text).toBe(false);
+    expect((r.json as any).controls).toContain('Push');
+    const bad = await callTool(client, 'animate-camera-rig', { move: 'rack-focus' });
+    expect(bad.isError).toBe(true);
+    expect(bad.text).toMatch(/focusOn/);
+    const ok = await callTool(client, 'animate-camera-rig', { move: 'push-in', amount: 600, startTime: 1 });
+    expect((ok.json as any).to).toBe(600);
+  });
+});

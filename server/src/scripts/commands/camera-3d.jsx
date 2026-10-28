@@ -551,3 +551,192 @@ MCP.register("lookAtLayer", function (args) {
     if (err) { notes.push("Expression error reported by After Effects: " + err); }
     return MCP.serialize.propertyResult(layer, orient, { mode: "expression", target: MCP.serialize.layerRef(target), expression: expr, notes: notes });
 }, { mutating: true });
+
+/* -------------------------------------------------------------- camera rig */
+
+MCP.camrig = {};
+MCP.camrig.CONTROLS = [
+    ["Orbit", "slider", 0], ["Tilt", "slider", 0], ["Roll", "slider", 0],
+    ["Push", "slider", 0], ["Truck", "slider", 0], ["Pedestal", "slider", 0], ["Drift", "slider", 0],
+    ["Depth of Field", "checkbox", 0], ["Aperture", "slider", 60], ["Blur Level", "slider", 100],
+    ["Focus Distance", "slider", 0], ["Follow Focus Layer", "checkbox", 0], ["Focus Layer", "layer", 0], ["Focus Offset", "slider", 0]
+];
+MCP.camrig.MATCH = { slider: ["ADBE Slider Control", "ADBE Slider Control-0001"], checkbox: ["ADBE Checkbox Control", "ADBE Checkbox Control-0001"], layer: ["ADBE Layer Control", "ADBE Layer Control-0001"] };
+/** Which control each move keys, its unit and a default amount. */
+MCP.camrig.MOVES = { orbit: ["Orbit", 30], tilt: ["Tilt", 10], roll: ["Roll", 5], "push-in": ["Push", 400], "pull-out": ["Push", -400], truck: ["Truck", 300], pedestal: ["Pedestal", -200], drift: ["Drift", 6] };
+
+MCP.camrig.addControl = function (layer, name, kind, value) {
+    var m = MCP.camrig.MATCH[kind];
+    var fx = layer.property("ADBE Effect Parade").addProperty(m[0]);
+    fx.name = name;
+    // Re-fetch by name: references go stale after addProperty.
+    var p = layer.property("ADBE Effect Parade").property(name).property(m[1]);
+    if (kind !== "layer") { p.setValue(value); }
+    return p;
+};
+
+MCP.camrig.control = function (rig, name) {
+    var fx = _mcpTry(function () { return rig.property("ADBE Effect Parade").property(name); }, null);
+    if (!fx) { MCP.fail("'" + rig.name + "' has no '" + name + "' control. Is it a rig made by create-camera-rig?", "invalid-argument"); }
+    return fx.property(1);
+};
+
+MCP.camrig.cameraOf = function (comp, rig) {
+    for (var i = 1; i <= comp.numLayers; i++) {
+        var L = comp.layer(i);
+        if (L instanceof CameraLayer && L.parent && L.parent.id === rig.id) { return L; }
+    }
+    MCP.fail("No camera is parented to '" + rig.name + "'.", "not-found");
+    return null;
+};
+
+MCP.register("createCameraRig", function (args) {
+    var comp = MCP.resolveComp(args.comp);
+    var name = String(MCP.arg(args, "name", "Camera Rig"));
+    if (_mcpTry(function () { return comp.layer(name); }, null)) { MCP.fail("The comp already has a layer named '" + name + "'. Pass another name.", "invalid-argument"); }
+    var zoom = MCP.isDefined(args.zoom) ? Number(args.zoom) : comp.width * MCP.num(args.focalLength, 35) / 36;
+    var target = [comp.width / 2, comp.height / 2, 0];
+    if (MCP.isDefined(args.target)) {
+        var tl = MCP.resolveLayer(comp, args.target);
+        var tp = tl.property("ADBE Transform Group").property("ADBE Position").value;
+        target = [tp[0], tp[1], tp.length > 2 ? tp[2] : 0];
+    } else if (MCP.isDefined(args.targetPoint)) {
+        target = MCP.cam.vec3(args.targetPoint);
+    }
+    var made3D = [];
+    if (MCP.isDefined(args.layers3D)) {
+        var list = [];
+        if (args.layers3D === "all") {
+            for (var a = 1; a <= comp.numLayers; a++) { list.push(comp.layer(a)); }
+        } else {
+            for (var b = 0; b < args.layers3D.length; b++) { list.push(MCP.resolveLayer(comp, args.layers3D[b])); }
+        }
+        for (var c = 0; c < list.length; c++) {
+            var L = list[c];
+            if (L instanceof CameraLayer || L instanceof LightLayer || L.adjustmentLayer || !_mcpTry(function () { return L.hasVideo; }, false)) { continue; }
+            if (!L.threeDLayer) { L.threeDLayer = true; made3D.push(MCP.serialize.layerRef(L)); }
+            if (L.source instanceof CompItem) { try { L.collapseTransformation = true; } catch (e0) {} }
+        }
+    }
+    var rig = comp.layers.addNull();
+    rig.name = name;
+    rig.threeDLayer = true;
+    rig.label = 2;
+    rig.property("ADBE Transform Group").property("ADBE Position").setValue(target);
+    for (var k = 0; k < MCP.camrig.CONTROLS.length; k++) {
+        var spec = MCP.camrig.CONTROLS[k];
+        var v = spec[2];
+        if (spec[0] === "Depth of Field") { v = MCP.bool(args.depthOfField, false) ? 1 : 0; }
+        if (spec[0] === "Aperture" && MCP.isDefined(args.aperture)) { v = Number(args.aperture); }
+        if (spec[0] === "Blur Level" && MCP.isDefined(args.blurLevel)) { v = Number(args.blurLevel); }
+        if (spec[0] === "Focus Distance") { v = zoom; }
+        if (spec[0] === "Drift" && MCP.isDefined(args.drift)) { v = Number(args.drift); }
+        MCP.camrig.addControl(rig, spec[0], spec[1], v);
+    }
+    if (MCP.isDefined(args.focusLayer)) {
+        var fl = MCP.resolveLayer(comp, args.focusLayer);
+        MCP.camrig.control(rig, "Focus Layer").setValue(fl.index);
+        MCP.camrig.control(rig, "Follow Focus Layer").setValue(1);
+    }
+    var R = "thisComp.layer(" + MCP.expr.str(name) + ")";
+    var tg = rig.property("ADBE Transform Group");
+    tg.property("ADBE Position").expression = "value + [effect(\"Truck\")(1), effect(\"Pedestal\")(1), 0];";
+    tg.property("ADBE Rotate X").expression = "value + effect(\"Tilt\")(1);";
+    tg.property("ADBE Rotate Y").expression = "value + effect(\"Orbit\")(1);";
+    tg.property("ADBE Rotate Z").expression = "value + effect(\"Roll\")(1);";
+    var cam = comp.layers.addCamera(String(MCP.arg(args, "cameraName", name + " Camera")), [comp.width / 2, comp.height / 2]);
+    cam.autoOrient = AutoOrientType.NO_AUTO_ORIENT;
+    cam.parent = rig;
+    var ct = cam.property("ADBE Transform Group");
+    ct.property("ADBE Position").setValue([0, 0, -zoom]);
+    ct.property("ADBE Orientation").setValue([0, 0, 0]);
+    ct.property("ADBE Rotate X").setValue(0);
+    ct.property("ADBE Rotate Y").setValue(0);
+    ct.property("ADBE Rotate Z").setValue(0);
+    ct.property("ADBE Position").expression =
+        "var r = " + R + ";\n" +
+        "var d = r.effect(\"Drift\")(1);\n" +
+        "var w = d > 0 ? wiggle(0.4, d) - value : [0, 0, 0];\n" +
+        "[0, 0, -(cameraOption.zoom - r.effect(\"Push\")(1))] + w;";
+    var opts = cam.property("ADBE Camera Options Group");
+    opts.property("ADBE Camera Zoom").setValue(zoom);
+    opts.property("ADBE Camera Depth of Field").expression = R + ".effect(\"Depth of Field\")(1);";
+    opts.property("ADBE Camera Aperture").expression = R + ".effect(\"Aperture\")(1);";
+    opts.property("ADBE Camera Blur Level").expression = R + ".effect(\"Blur Level\")(1);";
+    opts.property("ADBE Camera Focus Distance").expression =
+        "var r = " + R + ";\n" +
+        "var f = r.effect(\"Focus Distance\")(1);\n" +
+        "if (r.effect(\"Follow Focus Layer\")(1) == 1) {\n" +
+        "  try { var L = r.effect(\"Focus Layer\")(1); f = length(toWorld([0, 0, 0]), L.toWorld(L.anchorPoint)) + r.effect(\"Focus Offset\")(1); } catch (e) {}\n" +
+        "}\n" +
+        "f;";
+    cam.moveToBeginning();
+    rig.moveToBeginning();
+    return {
+        composition: MCP.serialize.compRef(comp),
+        rig: MCP.serialize.layerRef(rig),
+        camera: MCP.serialize.layerRef(cam),
+        zoom: MCP.round(zoom, 2),
+        focalLengthMm: MCP.round(zoom * 36 / comp.width, 2),
+        target: MCP.roundValue(target),
+        controls: (function () { var o = []; for (var i = 0; i < MCP.camrig.CONTROLS.length; i++) { o.push(MCP.camrig.CONTROLS[i][0]); } return o; })(),
+        madeThreeD: made3D,
+        notes: made3D.length ? [] : ["Only 3D layers see the camera: pass layers3D, or switch layers to 3D with set-layer-3d."]
+    };
+}, { mutating: true });
+
+MCP.register("animateCameraRig", function (args) {
+    var comp = MCP.resolveComp(args.comp);
+    var rig = MCP.resolveLayer(comp, MCP.arg(args, "rig", { name: "Camera Rig" }));
+    var move = String(MCP.requireArg(args, "move"));
+    var t0 = MCP.animate.timeOf(comp, args, "startTime", "startFrame", 0);
+    var t1 = t0 + MCP.animate.span(comp, args, move === "orbit" ? 3 : 2);
+    var easing = MCP.isDefined(args.easing) ? args.easing : MCP.animate.EASE_LAND;
+    var prop, from, to, label, notes = [];
+    if (move === "rack-focus") {
+        var cam = MCP.camrig.cameraOf(comp, rig);
+        var target = MCP.resolveLayer(comp, MCP.requireArg(args, "focusOn"));
+        // Start from the focus the camera really has at t0 (it may be following a layer), then hand over to the slider at t0
+        // with one hold key, so focus keeps following before the pull.
+        var camFocus = cam.property("ADBE Camera Options Group").property("ADBE Camera Focus Distance");
+        var focusAtStart = camFocus.valueAtTime(t0, false);
+        var follow = MCP.camrig.control(rig, "Follow Focus Layer");
+        if (follow.valueAtTime(t0, true)) {
+            if (follow.numKeys === 0 && t0 > 0) { follow.setValueAtTime(0, 1); }
+            follow.setValueAtTime(t0, 0);
+            for (var fk = 1; fk <= follow.numKeys; fk++) { try { follow.setInterpolationTypeAtKey(fk, KeyframeInterpolationType.HOLD, KeyframeInterpolationType.HOLD); } catch (eh) {} }
+        }
+        // Measure the distance by expression at both times, so it includes parents, the rig's own move and the target's.
+        var fx = rig.property("ADBE Effect Parade").addProperty("ADBE Slider Control");
+        fx.name = "__mcp_focus_probe";
+        var probe = rig.property("ADBE Effect Parade").property("__mcp_focus_probe").property(1);
+        probe.expression = "var c = thisComp.layer(" + MCP.expr.str(cam.name) + "); var L = thisComp.layer(" + MCP.expr.str(target.name) + "); length(c.toWorld([0, 0, 0]), L.toWorld(L.anchorPoint));";
+        var d1 = probe.valueAtTime(t1, false);
+        rig.property("ADBE Effect Parade").property("__mcp_focus_probe").remove();
+        prop = MCP.camrig.control(rig, "Focus Distance");
+        from = focusAtStart;
+        to = d1 + MCP.num(args.amount, 0);
+        if (!MCP.camrig.control(rig, "Depth of Field").value) { notes.push("Depth of Field is off on the rig, so the focus change will not show. Turn it on with set-effect-property or create the rig with depthOfField true."); }
+        label = "Focus Distance";
+    } else {
+        var spec = MCP.camrig.MOVES[move];
+        if (!spec) { MCP.fail("Unknown move '" + move + "'. Moves: orbit, tilt, roll, push-in, pull-out, truck, pedestal, drift, rack-focus.", "invalid-argument"); }
+        label = spec[0];
+        prop = MCP.camrig.control(rig, label);
+        from = MCP.animate.valueAt(prop, t0);
+        to = MCP.isDefined(args.to) ? Number(args.to) : from + MCP.num(args.amount, spec[1]);
+    }
+    var keys = MCP.animate.keyMove(prop, t0, from, t1, to, easing, { comp: comp });
+    return {
+        composition: MCP.serialize.compRef(comp),
+        rig: MCP.serialize.layerRef(rig),
+        move: move,
+        control: label,
+        from: MCP.round(from, 3),
+        to: MCP.round(to, 3),
+        startTime: MCP.round(t0),
+        endTime: MCP.round(t1),
+        keys: keys,
+        notes: notes
+    };
+}, { mutating: true });
