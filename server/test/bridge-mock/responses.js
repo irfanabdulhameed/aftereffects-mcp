@@ -34,8 +34,9 @@ import { responses as uiDemo } from './responses/ui-demo.js';
 import { responses as motionRigs } from './responses/motion-rigs.js';
 import { responses as charts } from './responses/charts.js';
 import { responses as looks } from './responses/looks.js';
+import { responses as figma } from './responses/figma.js';
 
-export const responses = { ...core, ...project, ...composition, ...layers, ...transform, ...keyframes, ...expressions, ...text, ...shapes, ...masks, ...effects, ...camera3d, ...time, ...markersAudio, ...render, ...rigs, ...workflow, ...components, ...animate, ...styles, ...check, ...vectors, ...textExtras, ...advanced3d, ...scenes, ...transitions, ...uiDemo, ...motionRigs, ...charts, ...looks };
+export const responses = { ...core, ...project, ...composition, ...layers, ...transform, ...keyframes, ...expressions, ...text, ...shapes, ...masks, ...effects, ...camera3d, ...time, ...markersAudio, ...render, ...rigs, ...workflow, ...components, ...animate, ...styles, ...check, ...vectors, ...textExtras, ...advanced3d, ...scenes, ...transitions, ...uiDemo, ...motionRigs, ...charts, ...looks, ...figma };
 
 export function respond(command, args, ctx) {
   const fn = responses[command];

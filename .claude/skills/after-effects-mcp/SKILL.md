@@ -5,7 +5,7 @@ description: Drive Adobe After Effects through the AfterEffectsMCP server. Use w
 
 # After Effects MCP
 
-The `AfterEffectsMCP` server exposes about 270 tools (62 core tools always on, the rest in packs) that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
+The `AfterEffectsMCP` server exposes about 280 tools (62 core tools always on, the rest in packs) that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
 
 ## Before anything
 
@@ -69,6 +69,11 @@ Only the core tools are listed at first. Before planning a job, call `tool-packs
 - A film is a scene plan: `create-scene-plan` makes a master comp of scene comps; `set-scene-duration`, `insert-scene` and `remove-scene` retime it without re-keying; `add-reference-overlay` puts a reference video on top as a guide.
 - Between scenes: `add-transition` (match cut, push, whip, zoom-through, mask reveal), `carry-element` to carry one element across a cut.
 - Product demos: `cursor-journey` (moves and clicks), `scroll-in-window`, `focus-on-region`, `device-frame`, `highlight-region`, `add-toast`.
+- Two states of a screen built as two comps: `smart-animate` keys the change between them (layers pair by name).
+- Camera work: `create-camera-rig` (focal length, layers3D, depth of field, drift), then `animate-camera-rig` per move (orbit, push-in, pedestal, truck, rack-focus); moves overlap without middle keys.
+- Finish and backgrounds (looks pack): `apply-look` (glow, bloom, grain, vignette, light-sweep, frosted-glass, soft-shadow, motion-blur), `create-background` (mesh-gradient, aurora, grid, dots, noise, grain; loops seamlessly).
+- Icons: `search-icons` then `add-icon` (Lucide default, Material Symbols, Phosphor). A Figma frame: `import-figma` (figma pack) with a link and FIGMA_TOKEN, or a saved JSON.
+- Delivery: `export-video` (mp4, prores-422, prores-4444, gif, webm) runs in the background; `export-preview` makes a phone-sized mp4; `get-export-status` follows them.
 - Procedural motion is a rig with controls on a null, never keys per layer: `grid-layout` (grids and bento that reflow), `proximity-effector`, `follow-chain`, `clone-array`, `wiggle-rig`, `sway-loop`, `fit-to-box`, `number-counter`, `shape-morph`. Rigs stack on the same property.
 - Data: `create-bar-chart`, `create-line-chart`, `create-pie-chart`, `create-stat`, `create-progress`; change values later with `update-chart-data`.
 

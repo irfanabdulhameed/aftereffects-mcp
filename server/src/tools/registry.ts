@@ -44,6 +44,7 @@ export type ToolGroup =
   | 'motion-rigs'
   | 'charts'
   | 'looks'
+  | 'figma'
   | 'help';
 
 export interface ToolContext {

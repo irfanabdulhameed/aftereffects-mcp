@@ -31,7 +31,7 @@ export function registerLookTools(server: McpServer): void {
       startTime: z.number().optional().describe('light-sweep: seconds. Default the layer in point.'),
       startFrame: z.number().int().optional().describe('Frames; wins over startTime.'),
       duration: z.number().positive().optional().describe('light-sweep: seconds. Default 0.8.'),
-      durationFrames: z.number().int().positive().optional(),
+      durationFrames: z.number().int().positive().optional().describe('Frames; wins over duration.'),
     },
     handler: async (args, ctx) => {
       if (args.look === 'soft-shadow') {

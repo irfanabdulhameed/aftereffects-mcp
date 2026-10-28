@@ -1,0 +1,731 @@
+{
+ "name": "Pricing",
+ "nodes": {
+  "1:2": {
+   "document": {
+    "id": "1:2",
+    "name": "Pricing card",
+    "type": "FRAME",
+    "absoluteBoundingBox": {
+     "x": -200,
+     "y": 100,
+     "width": 1440,
+     "height": 900
+    },
+    "size": {
+     "x": 1440,
+     "y": 900
+    },
+    "fills": [
+     {
+      "type": "SOLID",
+      "visible": true,
+      "opacity": 1.0,
+      "color": {
+       "r": 0.9607843137254902,
+       "g": 0.9607843137254902,
+       "b": 0.9686274509803922,
+       "a": 1
+      }
+     }
+    ],
+    "clipsContent": true,
+    "children": [
+     {
+      "id": "2:1",
+      "name": "Glow",
+      "type": "ELLIPSE",
+      "absoluteBoundingBox": {
+       "x": 680,
+       "y": 160,
+       "width": 300,
+       "height": 300
+      },
+      "size": {
+       "x": 300,
+       "y": 300
+      },
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 0.5,
+        "color": {
+         "r": 0.2,
+         "g": 0.34509803921568627,
+         "b": 0.9490196078431372,
+         "a": 1
+        }
+       }
+      ],
+      "effects": [
+       {
+        "type": "LAYER_BLUR",
+        "visible": true,
+        "radius": 60
+       }
+      ]
+     },
+     {
+      "id": "2:2",
+      "name": "Card",
+      "type": "RECTANGLE",
+      "absoluteBoundingBox": {
+       "x": 220,
+       "y": 250,
+       "width": 600,
+       "height": 600
+      },
+      "size": {
+       "x": 600,
+       "y": 600
+      },
+      "cornerRadius": 24,
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 1.0,
+         "g": 1.0,
+         "b": 1.0,
+         "a": 1
+        }
+       }
+      ],
+      "strokes": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 0.8980392156862745,
+         "g": 0.8980392156862745,
+         "b": 0.9176470588235294,
+         "a": 1
+        }
+       }
+      ],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "effects": [
+       {
+        "type": "DROP_SHADOW",
+        "visible": true,
+        "color": {
+         "r": 0,
+         "g": 0,
+         "b": 0,
+         "a": 0.08
+        },
+        "offset": {
+         "x": 0,
+         "y": 8
+        },
+        "radius": 24,
+        "spread": 0
+       }
+      ]
+     },
+     {
+      "id": "2:3",
+      "name": "Header band",
+      "type": "RECTANGLE",
+      "absoluteBoundingBox": {
+       "x": 220,
+       "y": 250,
+       "width": 600,
+       "height": 120
+      },
+      "size": {
+       "x": 600,
+       "y": 120
+      },
+      "rectangleCornerRadii": [
+       24,
+       24,
+       0,
+       0
+      ],
+      "fills": [
+       {
+        "type": "GRADIENT_LINEAR",
+        "visible": true,
+        "gradientStops": [
+         {
+          "position": 0,
+          "color": {
+           "r": 0.2,
+           "g": 0.345,
+           "b": 0.949,
+           "a": 1
+          }
+         },
+         {
+          "position": 1,
+          "color": {
+           "r": 0.545,
+           "g": 0.361,
+           "b": 0.965,
+           "a": 1
+          }
+         }
+        ]
+       }
+      ],
+      "fillGeometry": [
+       {
+        "path": "M24 0H576C589.255 0 600 10.745 600 24V120H0V24C0 10.745 10.745 0 24 0Z",
+        "windingRule": "NONZERO"
+       }
+      ]
+     },
+     {
+      "id": "2:4",
+      "name": "Plan",
+      "type": "TEXT",
+      "absoluteBoundingBox": {
+       "x": 280,
+       "y": 280,
+       "width": 300,
+       "height": 40
+      },
+      "size": {
+       "x": 300,
+       "y": 40
+      },
+      "characters": "Pro plan",
+      "style": {
+       "fontFamily": "SF Pro Display",
+       "fontPostScriptName": "SFProDisplay-Semibold",
+       "fontStyle": "Semibold",
+       "fontSize": 32,
+       "textAlignHorizontal": "LEFT",
+       "textAutoResize": "WIDTH_AND_HEIGHT",
+       "letterSpacing": 0
+      },
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 1.0,
+         "g": 1.0,
+         "b": 1.0,
+         "a": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "2:5",
+      "name": "Badge dot",
+      "type": "ELLIPSE",
+      "absoluteBoundingBox": {
+       "x": 740,
+       "y": 292,
+       "width": 16,
+       "height": 16
+      },
+      "size": {
+       "x": 16,
+       "y": 16
+      },
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 0.20392156862745098,
+         "g": 0.7803921568627451,
+         "b": 0.34901960784313724,
+         "a": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "2:6",
+      "name": "Price",
+      "type": "TEXT",
+      "absoluteBoundingBox": {
+       "x": 280,
+       "y": 400,
+       "width": 200,
+       "height": 76
+      },
+      "size": {
+       "x": 200,
+       "y": 76
+      },
+      "characters": "$24",
+      "style": {
+       "fontFamily": "SF Pro Display",
+       "fontPostScriptName": "SFProDisplay-Bold",
+       "fontStyle": "Bold",
+       "fontSize": 64,
+       "textAlignHorizontal": "LEFT",
+       "textAutoResize": "WIDTH_AND_HEIGHT",
+       "letterSpacing": -1.28
+      },
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 0.10980392156862745,
+         "g": 0.10980392156862745,
+         "b": 0.11764705882352941,
+         "a": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "2:7",
+      "name": "Description",
+      "type": "TEXT",
+      "absoluteBoundingBox": {
+       "x": 280,
+       "y": 492,
+       "width": 480,
+       "height": 48
+      },
+      "size": {
+       "x": 480,
+       "y": 48
+      },
+      "characters": "Everything in Free, plus unlimited projects and priority support for your whole team.",
+      "style": {
+       "fontFamily": "Inter",
+       "fontPostScriptName": "Inter-Regular",
+       "fontStyle": "Regular",
+       "fontSize": 16,
+       "textAlignHorizontal": "LEFT",
+       "textAutoResize": "HEIGHT",
+       "letterSpacing": 0,
+       "lineHeightPx": 24
+      },
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 0.38823529411764707,
+         "g": 0.38823529411764707,
+         "b": 0.4,
+         "a": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "2:8",
+      "name": "Features",
+      "type": "FRAME",
+      "absoluteBoundingBox": {
+       "x": 280,
+       "y": 570,
+       "width": 400,
+       "height": 112
+      },
+      "fills": [],
+      "children": [
+       {
+        "id": "30:1",
+        "name": "Feature 1",
+        "type": "GROUP",
+        "absoluteBoundingBox": {
+         "x": 280,
+         "y": 570,
+         "width": 400,
+         "height": 24
+        },
+        "children": [
+         {
+          "id": "31:1",
+          "name": "Check",
+          "type": "VECTOR",
+          "absoluteBoundingBox": {
+           "x": 280,
+           "y": 572,
+           "width": 20,
+           "height": 20
+          },
+          "size": {
+           "x": 20,
+           "y": 20
+          },
+          "fills": [
+           {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1.0,
+            "color": {
+             "r": 0.20392156862745098,
+             "g": 0.7803921568627451,
+             "b": 0.34901960784313724,
+             "a": 1
+            }
+           }
+          ],
+          "fillGeometry": [
+           {
+            "path": "M7.5 14.2L3.3 10l-1.4 1.4 5.6 5.6 12-12-1.4-1.4z",
+            "windingRule": "NONZERO"
+           }
+          ]
+         },
+         {
+          "id": "32:1",
+          "name": "Label",
+          "type": "TEXT",
+          "absoluteBoundingBox": {
+           "x": 312,
+           "y": 570,
+           "width": 368,
+           "height": 24
+          },
+          "size": {
+           "x": 368,
+           "y": 24
+          },
+          "characters": "Unlimited projects",
+          "style": {
+           "fontFamily": "SF Pro Text",
+           "fontPostScriptName": "SFProText-Regular",
+           "fontStyle": "Regular",
+           "fontSize": 16,
+           "textAlignHorizontal": "LEFT",
+           "textAutoResize": "HEIGHT",
+           "letterSpacing": 0
+          },
+          "fills": [
+           {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1.0,
+            "color": {
+             "r": 0.22745098039215686,
+             "g": 0.22745098039215686,
+             "b": 0.23529411764705882,
+             "a": 1
+            }
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "30:2",
+        "name": "Feature 2",
+        "type": "GROUP",
+        "absoluteBoundingBox": {
+         "x": 280,
+         "y": 614,
+         "width": 400,
+         "height": 24
+        },
+        "children": [
+         {
+          "id": "31:2",
+          "name": "Check",
+          "type": "VECTOR",
+          "absoluteBoundingBox": {
+           "x": 280,
+           "y": 616,
+           "width": 20,
+           "height": 20
+          },
+          "size": {
+           "x": 20,
+           "y": 20
+          },
+          "fills": [
+           {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1.0,
+            "color": {
+             "r": 0.20392156862745098,
+             "g": 0.7803921568627451,
+             "b": 0.34901960784313724,
+             "a": 1
+            }
+           }
+          ],
+          "fillGeometry": [
+           {
+            "path": "M7.5 14.2L3.3 10l-1.4 1.4 5.6 5.6 12-12-1.4-1.4z",
+            "windingRule": "NONZERO"
+           }
+          ]
+         },
+         {
+          "id": "32:2",
+          "name": "Label",
+          "type": "TEXT",
+          "absoluteBoundingBox": {
+           "x": 312,
+           "y": 614,
+           "width": 368,
+           "height": 24
+          },
+          "size": {
+           "x": 368,
+           "y": 24
+          },
+          "characters": "Priority support",
+          "style": {
+           "fontFamily": "SF Pro Text",
+           "fontPostScriptName": "SFProText-Regular",
+           "fontStyle": "Regular",
+           "fontSize": 16,
+           "textAlignHorizontal": "LEFT",
+           "textAutoResize": "HEIGHT",
+           "letterSpacing": 0
+          },
+          "fills": [
+           {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1.0,
+            "color": {
+             "r": 0.22745098039215686,
+             "g": 0.22745098039215686,
+             "b": 0.23529411764705882,
+             "a": 1
+            }
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "30:3",
+        "name": "Feature 3",
+        "type": "GROUP",
+        "absoluteBoundingBox": {
+         "x": 280,
+         "y": 658,
+         "width": 400,
+         "height": 24
+        },
+        "children": [
+         {
+          "id": "31:3",
+          "name": "Check",
+          "type": "VECTOR",
+          "absoluteBoundingBox": {
+           "x": 280,
+           "y": 660,
+           "width": 20,
+           "height": 20
+          },
+          "size": {
+           "x": 20,
+           "y": 20
+          },
+          "fills": [
+           {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1.0,
+            "color": {
+             "r": 0.20392156862745098,
+             "g": 0.7803921568627451,
+             "b": 0.34901960784313724,
+             "a": 1
+            }
+           }
+          ],
+          "fillGeometry": [
+           {
+            "path": "M7.5 14.2L3.3 10l-1.4 1.4 5.6 5.6 12-12-1.4-1.4z",
+            "windingRule": "NONZERO"
+           }
+          ]
+         },
+         {
+          "id": "32:3",
+          "name": "Label",
+          "type": "TEXT",
+          "absoluteBoundingBox": {
+           "x": 312,
+           "y": 658,
+           "width": 368,
+           "height": 24
+          },
+          "size": {
+           "x": 368,
+           "y": 24
+          },
+          "characters": "Team workspace",
+          "style": {
+           "fontFamily": "SF Pro Text",
+           "fontPostScriptName": "SFProText-Regular",
+           "fontStyle": "Regular",
+           "fontSize": 16,
+           "textAlignHorizontal": "LEFT",
+           "textAutoResize": "HEIGHT",
+           "letterSpacing": 0
+          },
+          "fills": [
+           {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1.0,
+            "color": {
+             "r": 0.22745098039215686,
+             "g": 0.22745098039215686,
+             "b": 0.23529411764705882,
+             "a": 1
+            }
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "2:9",
+      "name": "Button",
+      "type": "FRAME",
+      "absoluteBoundingBox": {
+       "x": 280,
+       "y": 756,
+       "width": 480,
+       "height": 56
+      },
+      "size": {
+       "x": 480,
+       "y": 56
+      },
+      "cornerRadius": 28,
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 0.2,
+         "g": 0.34509803921568627,
+         "b": 0.9490196078431372,
+         "a": 1
+        }
+       }
+      ],
+      "children": [
+       {
+        "id": "2:10",
+        "name": "Label",
+        "type": "TEXT",
+        "absoluteBoundingBox": {
+         "x": 280,
+         "y": 772,
+         "width": 480,
+         "height": 24
+        },
+        "size": {
+         "x": 480,
+         "y": 24
+        },
+        "characters": "Get started",
+        "style": {
+         "fontFamily": "SF Pro Text",
+         "fontPostScriptName": "SFProText-Semibold",
+         "fontStyle": "Semibold",
+         "fontSize": 18,
+         "textAlignHorizontal": "CENTER",
+         "textAutoResize": "HEIGHT",
+         "letterSpacing": 0
+        },
+        "fills": [
+         {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1.0,
+          "color": {
+           "r": 1.0,
+           "g": 1.0,
+           "b": 1.0,
+           "a": 1
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "2:11",
+      "name": "Old badge",
+      "type": "RECTANGLE",
+      "visible": false,
+      "absoluteBoundingBox": {
+       "x": 0,
+       "y": 0,
+       "width": 10,
+       "height": 10
+      },
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 1.0,
+        "color": {
+         "r": 1.0,
+         "g": 0.0,
+         "b": 0.0,
+         "a": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "2:12",
+      "name": "Blur panel",
+      "type": "FRAME",
+      "absoluteBoundingBox": {
+       "x": 880,
+       "y": 660,
+       "width": 280,
+       "height": 180
+      },
+      "size": {
+       "x": 280,
+       "y": 180
+      },
+      "cornerRadius": 20,
+      "fills": [
+       {
+        "type": "SOLID",
+        "visible": true,
+        "opacity": 0.4,
+        "color": {
+         "r": 1.0,
+         "g": 1.0,
+         "b": 1.0,
+         "a": 1
+        }
+       }
+      ],
+      "effects": [
+       {
+        "type": "BACKGROUND_BLUR",
+        "visible": true,
+        "radius": 30
+       }
+      ],
+      "children": []
+     }
+    ]
+   }
+  }
+ }
+}

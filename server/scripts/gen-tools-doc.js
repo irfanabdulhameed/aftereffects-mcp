@@ -41,6 +41,7 @@ const GROUP_TITLES = {
   'ui-demo': 'UI demo kit',
   'motion-rigs': 'Motion rigs',
   looks: 'Looks and backgrounds',
+  figma: 'Figma to After Effects',
   'charts': 'Charts and data',
   help: 'Help',
 };

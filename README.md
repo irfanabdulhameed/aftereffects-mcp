@@ -8,7 +8,7 @@ What sets it apart from other After Effects servers:
 - Self-verification: `see-frame` and `see-frames` return PNG frames so the agent looks at its own work before reporting.
 - Rig tools: the four studio rigs (edge glow, power warp transition, depth map blur reveal, blur colour reveal) as one-call tools with every parameter.
 - A style file: pin house durations, easings, text styles and colours, and reference them as `@style.entrance` or `@style.h1`.
-- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 267 tools uses them well.
+- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 278 tools uses them well.
 - A small tool list: 62 core tools are always on and the rest come in packs the agent switches on when a job needs them, so a client reads about a fifth of the definitions.
 - Idempotent effects, real text animators, one easing model for every keyframe, and every command undoable in one step.
 - Components: turn layers into reusable parts with a simple controls list (Essential Properties), place many copies with different text and colours, save them as templates or a library.
@@ -90,17 +90,17 @@ The client sees 62 core tools at first: projects, comps, layers, properties, key
 | Keyframes | 14 | bulk and multi writes, easing, move, copy, reverse, bake, stagger |
 | Expressions | 8 | set, errors, 21 presets, expression controls |
 | Text | 17 | style, fonts, 12 text animator presets, selectors, outlines, boxes, text on a path, 3D per letter, a box that grows with its text, fit text to a box |
-| Shapes | 12 | create, add, fill, stroke, path, modifiers, trim paths, repeater, SVG and Illustrator import as shapes, gradient fills and strokes, SVG path data |
+| Shapes and icons | 14 | create, add, fill, stroke, path, modifiers, trim paths, repeater, SVG and Illustrator import as shapes, gradient fills and strokes, SVG path data, Lucide, Material Symbols and Phosphor icons by name |
 | Masks | 7 | create, edit, keyframe, from shape, reveal animation |
 | Effects and presets | 19 | apply (idempotent), bulk, inspect, set, keyframe, copy, 33 templates, .ffx presets |
-| Camera, lights, 3D | 9 | camera settings, camera moves, lights, materials, look at, Advanced 3D renderer, extrusion and bevels, environment light |
+| Camera, lights, 3D | 11 | camera settings, camera moves, camera rigs (orbit, push, crane, drift, rack focus), lights, materials, look at, Advanced 3D renderer, extrusion and bevels, environment light |
 | Time | 7 | time remap, freeze, speed, reverse, blending, loop |
 | Markers and audio | 10 | markers, waveform analysis, audio to keyframes, beat grids |
-| Render and preview | 12 | see-frame, see-live (Live View plug-in), contact sheets, render queue, aerender, stills |
+| Render, preview and export | 15 | see-frame, see-live (Live View plug-in), contact sheets, render queue, stills, one-step background export (mp4, ProRes, gif, webm) and phone previews |
 | Rigs | 5 | the four panels as tools |
 | Batch, workflow, utilities | 17 | batch, undo, status, snapshots, find, replace, relink |
 | Components and templates | 11 | make a component with Essential Properties, set each copy's values, place many copies, responsive timing, .mogrt export, a component library to save parts into and insert them from (works from OneDrive or iCloud with parts downloaded on demand) |
-| Animation shortcuts | 9 | move a property, entrances and exits with stagger, typewriter with cursor, word-by-word reveal, button press, move along a path, replay at markers, camera push |
+| Animation shortcuts | 10 | move a property, entrances and exits with stagger, typewriter with cursor, word-by-word reveal, button press, move along a path, replay at markers, camera push, Smart Animate between two state comps |
 | Layer styles | 4 | drop shadow, glows, bevel, satin, colour and gradient overlay, stroke |
 | Project check | 4 | construction audit, clear caches, save a numbered version, sort the project into folders |
 | Scenes | 6 | a scene plan with a master comp, retime, insert and remove scenes, reference overlays |
@@ -108,6 +108,8 @@ The client sees 62 core tools at first: projects, comps, layers, properties, key
 | UI demo | 6 | cursor journey with clicks, scroll in a window, focus on a region, device frames, highlights, toasts |
 | Motion rigs | 9 | number counter, grid and bento layout, proximity effector, follow chain, clone array, shape morph, wiggle, sway, fit to a box |
 | Charts | 7 | bar, line and pie charts, stat with sparkline, progress bar and ring, animated data changes |
+| Looks and backgrounds | 2 | glow, bloom, grain, vignette, light sweep, frosted glass, soft shadow, motion blur; looping mesh gradient, aurora, grid, dots and noise backgrounds |
+| Figma | 1 | a Figma frame rebuilt as editable layers from a link or a saved JSON |
 | AE guard (macOS) | 4 | status, dialogs, panel reload and re-arm |
 | Help and packs | 4 | agent guide, tool list with inputs, packs on and off, run any tool |
 

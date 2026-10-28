@@ -221,6 +221,7 @@ export function registerExportTools(server: McpServer): void {
     group: 'render',
     mutating: false,
     timeout: 'render',
+    bridge: null,
     description:
       'Exports a composition in one step, in the background so After Effects stays free: mp4 (H.264 40 Mbps), prores-422, prores-4444 (with alpha), gif (palette-optimised, 15 fps) or webm (VP9 with alpha). aerender renders the saved project at low priority and ffmpeg converts where After Effects has no direct format. ' +
       'Use when: the human wants a finished file to share, upload or hand over. Do not use for: a quick look on a phone (export-preview) or one still (export-frame-png). ' +
@@ -250,6 +251,7 @@ export function registerExportTools(server: McpServer): void {
     group: 'render',
     mutating: false,
     timeout: 'render',
+    bridge: null,
     description:
       'Renders a small, phone-friendly MP4 of a composition in the background (H.264, at most 960 px wide, fast start) into the previews folder and waits for it, so it can be watched on a phone. ' +
       'Use when: the human wants to see the motion away from the Mac, or a quick review copy. Do not use for: a finished delivery (export-video). ' +
@@ -260,7 +262,7 @@ export function registerExportTools(server: McpServer): void {
     input: {
       comp: CompRef.optional(),
       width: z.number().int().min(160).max(1920).optional().describe('Maximum width in pixels. Default 960.'),
-      outputPath: z.string().optional(),
+      outputPath: z.string().optional().describe('Output file. Default in AE_MCP_PREVIEW_DIR or the bridge folder\'s previews.'),
       wait: z.boolean().optional().describe('Wait for the file. Default true.'),
       ...RangeArgs,
     },

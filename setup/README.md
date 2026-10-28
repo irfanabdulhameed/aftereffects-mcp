@@ -91,6 +91,10 @@ All optional. See `docs/ARCHITECTURE.md` for the full table.
 | `AE_MCP_TOOLS` | `core` | Tools listed at start: `core`, `all`, or core plus a comma list of packs (`charts,ui-demo`) |
 | `AE_MCP_LIBRARY_DIR` | unset | Component library folder used by `list-library-components`, `insert-library-component`, `save-to-library` and `remove-from-library` |
 | `AE_MCP_LIBRARY_WAIT_MS` | `20000` | How long to wait for an online-only `library.json` before using the server's last copy |
+| `AE_MCP_EXPORT_DIR` | `~/Movies/After Effects Exports` | Where `export-video` writes files |
+| `AE_MCP_PREVIEW_DIR` | `<bridge>/previews` | Where `export-preview` writes phone previews; a synced folder (OneDrive, iCloud Drive) puts them on the phone |
+| `AE_MCP_FFMPEG` | found on PATH | ffmpeg for gif, webm, scaled mp4 and previews |
+| `FIGMA_TOKEN` | unset | Figma personal access token for `import-figma` with a link (Figma > Settings > Security > Personal access tokens) |
 
 ## Updating after a code change
 

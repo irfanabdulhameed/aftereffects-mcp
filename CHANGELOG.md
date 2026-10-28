@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.6.0 (2026-10-28)
+
+Eleven new tools, 278 in all; the core stays at 62.
+
+- Icons: `add-icon` draws Lucide, Material Symbols and Phosphor icons as real vector shape layers (stroke widths, round caps, duotone tints kept), fetched once from jsDelivr at pinned versions and cached in the bridge folder; `search-icons` finds names by words. `shape-from-svg-path` takes `lineCap`, `lineJoin` and `groupOpacity`.
+- `smart-animate`: keys the change between two state comps like Smart Animate in Figma. Layers pair by name; every differing property gets two landing-eased keys, new layers fade in, missing ones fade out. A copy of the start comp is animated by default.
+- Camera rigs: `create-camera-rig` (a control null with Orbit, Tilt, Roll, Push, Truck, Pedestal, Drift and depth-of-field controls, and a one-node camera with a lens from a focal length) and `animate-camera-rig` (one control per move, so moves overlap without middle keys; rack-focus measures the new layer's distance).
+- Looks pack: `apply-look` (tight plus wide glow, bloom, mono grain, vignette, light sweep, frosted glass, 6 % soft UI shadow, motion blur) and `create-background` (mesh gradient, aurora, grid, dots, noise, grain; every one loops seamlessly).
+- Export: `export-video` (mp4, ProRes 422 and 4444, gif, webm) and `export-preview` (a small fast-start mp4 for a phone) render with aerender in the background at low priority, ffmpeg converting where needed; `get-export-status` follows the jobs.
+- Figma pack: `import-figma` rebuilds a Figma frame as editable layers from a link and token (`FIGMA_TOKEN`) or a saved REST JSON: shapes, Figma's own vector geometry, box text with font metrics, image fills, drop shadows as layer styles, layer and background blur.
+
 ## 2.5.0 (2026-10-28)
 
 A component library that works from a synced folder, and Live View. 267 tools, 62 of them in the core.

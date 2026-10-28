@@ -60,6 +60,7 @@ export const PACK_SUMMARIES: Record<ToolGroup, string> = {
   'ui-demo': 'cursor journeys with clicks, scroll in a window, focus on a region, device frames, highlights, toasts',
   'motion-rigs': 'number counter, grid and bento layout, proximity effector, follow chain, clone array, shape morph, wiggle, sway, fit to a box',
   charts: 'bar, line and pie charts, stat with sparkline, progress bar and ring, animated data changes',
+  figma: 'a Figma frame rebuilt as editable layers (shapes, vector geometry, text, images, shadows, blurs)',
   looks: 'named finishes (glow, bloom, grain, vignette, light sweep, frosted glass, soft shadow, motion blur) and looping backgrounds (mesh gradient, aurora, grid, dots, noise)',
   help: 'guide, tool list, packs',
 };
