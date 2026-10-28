@@ -299,5 +299,24 @@ export const responses = {
       skipped: args.layers ? [] : [{ layer: layerRef(5, 'Camera 1'), reason: 'cameras and lights are not pushed (scaling a camera\'s parent moves the camera)' }],
     };
   },
+
+  smartAnimate: (args) => {
+    if (args.from?.name && args.from?.name === args.to?.name) throw Object.assign(new Error('from and to are the same composition.'), { mcpCode: 'invalid-argument' });
+    const name = args.duplicate === false ? args.from?.name ?? 'A' : args.name ?? `${args.from?.name ?? 'A'} to ${args.to?.name ?? 'B'}`;
+    return {
+      composition: { id: 9, name },
+      from: { id: 1, name: args.from?.name ?? 'A' },
+      to: { id: 2, name: args.to?.name ?? 'B' },
+      duplicated: args.duplicate !== false,
+      startTime: args.startTime ?? 0,
+      endTime: (args.startTime ?? 0) + (args.duration ?? 0.5),
+      propertiesAnimated: 2,
+      matched: [{ layer: { index: 1, id: 11, name: 'Card' }, changes: [{ property: 'Transform/Position', from: [400, 540], to: [960, 540] }, { property: 'Transform/Scale', from: [100, 100], to: [120, 120] }] }],
+      added: [{ index: 1, id: 12, name: 'Badge' }],
+      removed: [],
+      skipped: [],
+      notes: [],
+    };
+  },
 };
 

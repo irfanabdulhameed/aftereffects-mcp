@@ -310,3 +310,14 @@ describe('add-camera-push', () => {
     await rejectedBeforeSend('add-camera-push', { pivot: [960] });
   });
 });
+
+describe('smart-animate', () => {
+  it('sends both states with the house landing by default and reports what it keyed', async () => {
+    const c = client;
+    const r = await callTool(c, 'smart-animate', { from: { name: 'Card closed' }, to: { name: 'Card open' }, startTime: 1, duration: 0.6 });
+    expect(r.isError, r.text).toBe(false);
+    expect(r.json).toMatchObject({ composition: { name: 'Card closed to Card open' }, duplicated: true, propertiesAnimated: 2 });
+    const same = await callTool(c, 'smart-animate', { from: { name: 'A' }, to: { name: 'A' } });
+    expect(same.isError).toBe(true);
+  });
+});

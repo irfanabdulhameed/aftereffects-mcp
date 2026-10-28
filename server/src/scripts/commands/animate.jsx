@@ -1356,3 +1356,167 @@ MCP.register("addCameraPush", function (args, ctx) {
         parented: parented, skipped: skipped
     };
 }, { mutating: true });
+
+/* ------------------------------------------------------------ smart animate */
+
+MCP.smart = {};
+MCP.smart.SKIP_GROUPS = { "ADBE Marker": true, "ADBE Time Remapping": true, "ADBE Audio Group": true, "ADBE Layer Sets": true };
+
+/** The property in group b that matches pa: by name in indexed groups (effects, masks, shape contents), by match name elsewhere. */
+MCP.smart.partner = function (b, pa, index) {
+    var indexed = _mcpTry(function () { return b.propertyType === PropertyType.INDEXED_GROUP; }, false);
+    var hit = null;
+    if (indexed) {
+        hit = _mcpTry(function () { return b.property(pa.name); }, null);
+        if (hit && String(hit.matchName) !== String(pa.matchName)) { hit = null; }
+        if (!hit && index <= b.numProperties) {
+            var same = _mcpTry(function () { return b.property(index); }, null);
+            if (same && String(same.matchName) === String(pa.matchName) && same.name === pa.name) { hit = same; }
+        }
+        return hit;
+    }
+    return _mcpTry(function () { return b.property(String(pa.matchName)); }, null);
+};
+
+MCP.smart.same = function (va, vb, vt) {
+    var i;
+    if (vt === PropertyValueType.SHAPE) {
+        if (!va || !vb || va.closed !== vb.closed || va.vertices.length !== vb.vertices.length) { return false; }
+        var lists = ["vertices", "inTangents", "outTangents"];
+        for (var l = 0; l < lists.length; l++) {
+            for (i = 0; i < va[lists[l]].length; i++) {
+                if (Math.abs(va[lists[l]][i][0] - vb[lists[l]][i][0]) > 1e-3 || Math.abs(va[lists[l]][i][1] - vb[lists[l]][i][1]) > 1e-3) { return false; }
+            }
+        }
+        return true;
+    }
+    if (vt === PropertyValueType.TEXT_DOCUMENT) {
+        return String(va.text) === String(vb.text) && _mcpTry(function () { return va.fontSize === vb.fontSize && String(va.font) === String(vb.font) && String(va.fillColor) === String(vb.fillColor); }, true);
+    }
+    if (MCP.isArray(va) && MCP.isArray(vb)) {
+        if (va.length !== vb.length) { return false; }
+        for (i = 0; i < va.length; i++) { if (Math.abs(Number(va[i]) - Number(vb[i])) > 1e-4) { return false; } }
+        return true;
+    }
+    return Math.abs(Number(va) - Number(vb)) <= 1e-4;
+};
+
+/** Keys one property from its value at t0 to the partner's value; returns a change record or null. */
+MCP.smart.leaf = function (pa, pb, ctx) {
+    if (!_mcpTry(function () { return pa.canVaryOverTime; }, false)) { return null; }
+    var vt = MCP.animate.valueType(pa);
+    if (vt === PropertyValueType.NO_VALUE || vt === PropertyValueType.MARKER || vt === PropertyValueType.LAYER_INDEX || vt === PropertyValueType.MASK_INDEX || vt === PropertyValueType.CUSTOM_VALUE) { return null; }
+    if (_mcpTry(function () { return pa.dimensionsSeparated; }, false)) { return null; }
+    if (_mcpTry(function () { return pa.isSeparationFollower && !pa.propertyGroup(1).property("ADBE Position").dimensionsSeparated; }, false)) { return null; }
+    var path = MCP.pathOf(pa).path;
+    if (_mcpTry(function () { return pa.expressionEnabled && pa.expression !== ""; }, false)) { ctx.notes.push(ctx.layerName + ": " + path + " has an expression, so it was left alone."); return null; }
+    var va = MCP.animate.valueAt(pa, ctx.t0);
+    var vb = MCP.animate.valueAt(pb, ctx.toTime);
+    if (va === null || vb === null || MCP.smart.same(va, vb, vt)) { return null; }
+    if (vt === PropertyValueType.TEXT_DOCUMENT) {
+        pa.setValueAtTime(ctx.t0, va);
+        pa.setValueAtTime(MCP.snapToFrame(ctx.comp, (ctx.t0 + ctx.t1) / 2), vb);
+        return { property: path, kind: "text swap" };
+    }
+    MCP.animate.keyMove(pa, ctx.t0, va, ctx.t1, vb, ctx.easing, { comp: ctx.comp });
+    return { property: path, from: vt === PropertyValueType.SHAPE ? "path" : MCP.animate.raw(va), to: vt === PropertyValueType.SHAPE ? "path" : MCP.animate.raw(vb) };
+};
+
+MCP.smart.walk = function (a, b, ctx, out, depth) {
+    if (depth > 14) { return; }
+    for (var i = 1; i <= a.numProperties; i++) {
+        var pa = a.property(i);
+        if (MCP.smart.SKIP_GROUPS[String(pa.matchName)]) { continue; }
+        var pb = MCP.smart.partner(b, pa, i);
+        if (!pb) { continue; }
+        if (pa.propertyType === PropertyType.PROPERTY) {
+            var ch = null;
+            try { ch = MCP.smart.leaf(pa, pb, ctx); } catch (e) { ctx.notes.push(ctx.layerName + ": " + MCP.pathOf(pa).path + " was not animated: " + e.message); }
+            if (ch) { out.push(ch); }
+        } else {
+            MCP.smart.walk(pa, pb, ctx, out, depth + 1);
+        }
+    }
+};
+
+MCP.smart.opacity = function (layer) {
+    return layer.property("ADBE Transform Group").property("ADBE Opacity");
+};
+
+MCP.register("smartAnimate", function (args) {
+    var from = MCP.resolveComp(MCP.requireArg(args, "from"));
+    var to = MCP.resolveComp(MCP.requireArg(args, "to"));
+    if (from.id === to.id) { MCP.fail("from and to are the same composition. Pass two compositions: the start state and the end state.", "invalid-argument"); }
+    var comp = from;
+    if (MCP.bool(args.duplicate, true)) {
+        comp = from.duplicate();
+        comp.name = String(MCP.arg(args, "name", from.name + " to " + to.name));
+    }
+    var t0 = MCP.animate.timeOf(comp, args, "startTime", "startFrame", 0);
+    var t1 = t0 + MCP.animate.span(comp, args, 0.5);
+    var toTime = MCP.num(args.toTime, 0);
+    var easing = MCP.isDefined(args.easing) ? args.easing : MCP.animate.EASE_LAND;
+    var notes = [], matched = [], added = [], removed = [], skipped = [];
+    var toByName = {}, twice = {}, fromNames = {}, i;
+    for (i = 1; i <= to.numLayers; i++) {
+        var nm = to.layer(i).name;
+        if (toByName[nm]) { twice[nm] = true; } else { toByName[nm] = to.layer(i); }
+    }
+    var layers = [];
+    for (i = 1; i <= comp.numLayers; i++) { layers.push(comp.layer(i)); }
+    for (i = 0; i < layers.length; i++) {
+        var L = layers[i];
+        if (fromNames[L.name]) { skipped.push({ layer: MCP.serialize.layerRef(L), reason: "another layer in " + from.name + " has the same name" }); continue; }
+        fromNames[L.name] = true;
+        if (twice[L.name]) { skipped.push({ layer: MCP.serialize.layerRef(L), reason: "two layers in " + to.name + " have this name" }); continue; }
+        var M = toByName[L.name];
+        if (!M) {
+            if (MCP.bool(args.fadeOut, true) && L.hasVideo) {
+                var op = MCP.smart.opacity(L);
+                MCP.animate.keyMove(op, t0, MCP.animate.valueAt(op, t0), t1, 0, MCP.animate.EASE_EXIT, { comp: comp });
+                removed.push(MCP.serialize.layerRef(L));
+            }
+            continue;
+        }
+        var ctx = { comp: comp, t0: t0, t1: t1, toTime: toTime, easing: easing, notes: notes, layerName: L.name };
+        var changes = [];
+        MCP.smart.walk(L, M, ctx, changes, 0);
+        matched.push({ layer: MCP.serialize.layerRef(L), changes: changes });
+    }
+    if (MCP.bool(args.fadeIn, true)) {
+        for (i = to.numLayers; i >= 1; i--) {
+            var N = to.layer(i);
+            if (fromNames[N.name] || twice[N.name]) { continue; }
+            // copyToComp does not promise where the new layer goes: find it by the layer id that is new afterwards.
+            var ids = {}, k;
+            for (k = 1; k <= comp.numLayers; k++) { ids[comp.layer(k).id] = true; }
+            N.copyToComp(comp);
+            var copy = null;
+            for (k = 1; k <= comp.numLayers; k++) { if (!ids[comp.layer(k).id]) { copy = comp.layer(k); break; } }
+            if (!copy) { notes.push("'" + N.name + "' could not be copied in."); continue; }
+            var cop = MCP.smart.opacity(copy);
+            if (copy.hasVideo && !(cop.expressionEnabled && cop.expression !== "")) {
+                var target = MCP.animate.valueAt(cop, toTime);
+                while (cop.numKeys > 0) { cop.removeKey(1); }
+                MCP.animate.keyMove(cop, t0, 0, t1, target, easing, { comp: comp });
+            }
+            added.push(MCP.serialize.layerRef(copy));
+        }
+    }
+    var keyed = 0;
+    for (i = 0; i < matched.length; i++) { keyed += matched[i].changes.length; }
+    return {
+        composition: MCP.serialize.compRef(comp),
+        from: MCP.serialize.compRef(from),
+        to: MCP.serialize.compRef(to),
+        duplicated: comp.id !== from.id,
+        startTime: MCP.round(t0),
+        endTime: MCP.round(t1),
+        propertiesAnimated: keyed,
+        matched: matched,
+        added: added,
+        removed: removed,
+        skipped: skipped,
+        notes: notes
+    };
+}, { mutating: true });

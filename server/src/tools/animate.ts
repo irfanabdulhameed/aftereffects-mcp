@@ -108,6 +108,31 @@ const MarkerSpec = z
 
 export function registerAnimateTools(server: McpServer): void {
   defineTool(server, {
+    name: 'smart-animate',
+    group: 'animate',
+    timeout: 'render',
+    description:
+      'Animates from one composition to another like Smart Animate in Figma: every layer whose name is in both gets keys on each property that differs (position, scale, rotation, opacity, size, colours, shape paths, effect values, Essential Properties), layers only in the end state fade in and layers only in the start state fade out. ' +
+      'Use when: two states of a screen or card are built as two comps (before and after a click, collapsed and open) and the change between them should animate. Do not use for: moving one property (animate-property) or a cut between scenes (add-transition). ' +
+      'Inputs: from, the start-state comp; to, the end-state comp; duplicate (default true) animates a copy of from named name (default "<from> to <to>") and leaves from as it was; startTime or startFrame (default 0); duration (default 0.5 s) or durationFrames; toTime, the time in to whose values are the end state (default 0); easing (default a landing: speed 0, influence 25 leaving and 100 arriving); fadeIn and fadeOut (default true). ' +
+      'Returns: the animated comp, each matched layer with the properties keyed (from and to values), the layers faded in and out, skipped layers with the reason, and notes. ' +
+      'Notes: layers pair by exact name, so name them the same in both comps; effects, masks and shape groups pair by name inside a layer. Properties with expressions are left alone. Text that changes swaps halfway. Undoable in one step. ' +
+      'Example: from {name: "Card closed"}, to {name: "Card open"}, startTime 1, duration 0.6.',
+    input: {
+      from: CompRef.describe('The start-state composition.'),
+      to: CompRef.describe('The end-state composition.'),
+      duplicate: z.boolean().optional().describe('Animate a copy of from instead of from itself. Default true.'),
+      name: z.string().min(1).optional().describe('Name of the copy. Default "<from> to <to>".'),
+      ...startArgs('0'),
+      ...durationArgs('0.5'),
+      toTime: z.number().min(0).optional().describe('Time in the to comp whose values are the end state. Default 0.'),
+      easing: Easing.optional(),
+      fadeIn: z.boolean().optional().describe('Copy in and fade in layers that only the end state has. Default true.'),
+      fadeOut: z.boolean().optional().describe('Fade out layers that only the start state has. Default true.'),
+    },
+  });
+
+  defineTool(server, {
     name: 'animate-property',
     group: 'animate',
     description:
