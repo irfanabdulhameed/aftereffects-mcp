@@ -7,7 +7,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as fs from 'fs';
 import { z } from 'zod';
 import { BridgeError } from '../bridge/types.js';
-import { catalog, defineTool, findTool, jsonResult, prepareBridgeArgs } from './registry.js';
+import { inputJsonSchema } from './packs.js';
+import { catalog, defineTool, findTool, isToolEnabled, jsonResult, prepareBridgeArgs } from './registry.js';
 
 export function registerBatchTools(server: McpServer): void {
   defineTool(server, {
@@ -249,26 +250,37 @@ export function registerBatchTools(server: McpServer): void {
     mutating: false,
     bridge: null,
     description:
-      'Lists every tool this server offers, grouped by category, with a one-line summary of each. ' +
-      'Use when: you are unsure which tool does something, or before writing a batch and you want the exact names. ' +
-      'Do not use for: full argument details; the tool\'s own schema has them, and docs/TOOLS.md has examples. ' +
-      'Inputs: group (optional) to list one category; search (optional) to filter by a word in the name or description. ' +
-      'Returns: count and a list of {name, group, mutating, summary}. ' +
-      'Notes: read-only, does not touch After Effects. ' +
-      'Example: search "keyframe" to find set-keyframes-bulk and stagger-keyframes-across-layers.',
+      'Lists every tool this server offers, on or off, grouped by pack, with a one-line summary of each. ' +
+      'Use when: you are unsure which tool does something, before writing a batch, or to read the inputs of a tool from a pack that is off. ' +
+      'Returns: count and a list of {name, group, active, mutating, summary}, plus inputSchema per tool with schema true. ' +
+      'Notes: read-only. tool-packs switches packs on; call-tool runs a tool that is off. ' +
+      'Example: search "keyframe"; or names ["create-bar-chart"], schema true.',
     input: {
-      group: z.string().optional().describe('Category name such as "layers" or "keyframes".'),
+      group: z.string().optional().describe('Pack (group) name such as "layers" or "charts".'),
       search: z.string().optional().describe('Case-insensitive text to match in the name or description.'),
+      names: z.array(z.string()).max(20).optional().describe('Exact tool names.'),
+      schema: z.boolean().optional().describe('Add each tool\'s input schema. Default false; at most 20 tools.'),
     },
     handler: async (args) => {
       const q = args.search ? args.search.toLowerCase() : undefined;
-      const tools = catalog
+      const picked = catalog
         .filter((c) => (args.group ? c.group === args.group : true))
-        .filter((c) => (q ? c.name.includes(q) || c.description.toLowerCase().includes(q) : true))
-        .map((c) => ({ name: c.name, group: c.group, mutating: c.mutating, summary: c.description.split('. ')[0] + '.' }));
+        .filter((c) => (args.names ? args.names.includes(c.name) : true))
+        .filter((c) => (q ? c.name.includes(q) || c.description.toLowerCase().includes(q) : true));
+      if (args.schema && picked.length > 20) {
+        return jsonResult({ tool: 'list-tools', error: 'too-many', message: `${picked.length} tools match; schema true allows 20. Narrow with names, group or search.` }, true);
+      }
+      const tools = picked.map((c) => ({
+        name: c.name,
+        group: c.group,
+        active: isToolEnabled(c.name),
+        mutating: c.mutating,
+        summary: c.description.split('. ')[0] + '.',
+        inputSchema: args.schema ? inputJsonSchema(c.name) : undefined,
+      }));
       const groups: Record<string, number> = {};
       for (const c of catalog) groups[c.group] = (groups[c.group] ?? 0) + 1;
-      return { count: tools.length, total: catalog.length, groups, tools };
+      return { count: tools.length, total: catalog.length, active: catalog.filter((c) => isToolEnabled(c.name)).length, groups, tools };
     },
   });
 

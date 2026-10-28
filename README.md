@@ -8,7 +8,8 @@ What sets it apart from other After Effects servers:
 - Self-verification: `see-frame` and `see-frames` return PNG frames so the agent looks at its own work before reporting.
 - Rig tools: the four studio rigs (edge glow, power warp transition, depth map blur reveal, blur colour reveal) as one-call tools with every parameter.
 - A style file: pin house durations, easings, text styles and colours, and reference them as `@style.entrance` or `@style.h1`.
-- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 261 tools uses them well.
+- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 263 tools uses them well.
+- A small tool list: 61 core tools are always on and the rest come in packs the agent switches on when a job needs them, so a client reads about a fifth of the definitions.
 - Idempotent effects, real text animators, one easing model for every keyframe, and every command undoable in one step.
 - Components: turn layers into reusable parts with a simple controls list (Essential Properties), place many copies with different text and colours, save them as templates or a library.
 - Animation shortcuts built the way an animator builds them: few eased keyframes, text animators and expressions, never a key on every frame.
@@ -78,6 +79,8 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 
 ## Tool overview
 
+The client sees 61 core tools at first: projects, comps, layers, properties, keyframes, expressions, text, shapes, effects, entrances and exits, see-frame and the project check. Every group below is also a pack. The agent calls `tool-packs` to switch packs on (the client is told the tool list changed) and `call-tool` to run a tool whose pack is off, for clients that do not reload their list. To start with more, set `AE_MCP_TOOLS` to `all` or to a comma list of packs such as `charts,ui-demo,scenes`.
+
 | Group | Count | What is in it |
 |---|---|---|
 | Project | 16 | open, save, new, import, replace footage, folders, cleanup |
@@ -106,6 +109,7 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 | Motion rigs | 9 | number counter, grid and bento layout, proximity effector, follow chain, clone array, shape morph, wiggle, sway, fit to a box |
 | Charts | 7 | bar, line and pie charts, stat with sparkline, progress bar and ring, animated data changes |
 | AE guard (macOS) | 4 | status, dialogs, panel reload and re-arm |
+| Help and packs | 4 | agent guide, tool list with inputs, packs on and off, run any tool |
 
 Every tool with its inputs and an example: [docs/TOOLS.md](docs/TOOLS.md) (generated). How an agent should work with them: [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md).
 

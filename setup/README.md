@@ -88,6 +88,7 @@ All optional. See `docs/ARCHITECTURE.md` for the full table.
 | `AE_MCP_BRIDGE_POLL_MS` | `500` | How often the panel checks the queue |
 | `AE_MCP_ALLOW_RAW_SCRIPT` | unset | Set to `1` to enable the `run-extendscript` tool |
 | `AE_MCP_STYLE_FILE` | unset | Path to a style file, see `docs/style-file.example.json` |
+| `AE_MCP_TOOLS` | `core` | Tools listed at start: `core`, `all`, or core plus a comma list of packs (`charts,ui-demo`) |
 
 ## Updating after a code change
 

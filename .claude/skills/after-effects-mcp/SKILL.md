@@ -5,7 +5,7 @@ description: Drive Adobe After Effects through the AfterEffectsMCP server. Use w
 
 # After Effects MCP
 
-The `AfterEffectsMCP` server exposes about 260 tools that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
+The `AfterEffectsMCP` server exposes about 260 tools (61 core tools always on, the rest in packs) that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
 
 ## Before anything
 
@@ -57,6 +57,10 @@ Every repeated UI object is one component: `create-component` precomposes it and
 - `add-text-box` puts a box or pill behind text that resizes with it; `set-text-on-path`, `set-per-character-3d`, `fit-text-to-box`.
 - `import-vector-as-shapes` for .svg and .ai art, `shape-from-svg-path` for icon path data, `set-shape-gradient` for gradients (colour stops need `allowClipboard`, which takes the screen).
 - Extruded text and shapes: `set-composition-renderer` (Advanced 3D), then `set-extrusion`; `add-environment-light` for image lighting.
+
+## Packs
+
+Only the core tools are listed at first. Before planning a job, call `tool-packs` and switch on what it needs (for example `["scenes", "transitions", "ui-demo"]` for a product film, `["charts"]` for data, `["components"]` for reusable parts). If the new tools do not appear, run them with `call-tool`.
 
 ## Films, rigs and charts
 

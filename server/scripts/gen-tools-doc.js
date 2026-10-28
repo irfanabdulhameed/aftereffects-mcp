@@ -181,13 +181,13 @@ function md(s) {
   return String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
-function renderTool(entry) {
+function renderTool(entry, core) {
   const lines = [];
   lines.push(`### ${entry.name}`);
   lines.push('');
   lines.push(entry.description);
   lines.push('');
-  lines.push(`Group: ${entry.group}. ${entry.mutating ? 'Changes the project (one undo step).' : 'Read-only.'} ${entry.bridge ? `Bridge command: \`${entry.bridge}\`.` : 'Runs on the server; not available inside batch.'}${entry.timeout === 'render' ? ' Uses the render timeout.' : ''}`);
+  lines.push(`${core.has(entry.name) ? 'Core tool, always on.' : `Pack: ${entry.group}.`} ${entry.mutating ? 'Changes the project (one undo step).' : 'Read-only.'} ${entry.bridge ? `Bridge command: \`${entry.bridge}\`.` : 'Runs on the server; not available inside batch.'}${entry.timeout === 'render' ? ' Uses the render timeout.' : ''}`);
   lines.push('');
   const keys = Object.keys(entry.input);
   if (keys.length === 0) {
@@ -224,6 +224,8 @@ export async function generateToolsDoc() {
   if (!fs.existsSync(fileURLToPath(indexUrl))) throw new Error('Run npm run build first; build/index.js is missing.');
   const { createServer } = await import(indexUrl.href);
   const { catalog } = await import(registryUrl.href);
+  const { CORE_TOOLS } = await import(new URL('../build/tools/packs.js', import.meta.url).href);
+  const core = new Set(CORE_TOOLS);
   if (catalog.length === 0) createServer();
   const groups = new Map();
   for (const entry of catalog) {
@@ -238,6 +240,8 @@ export async function generateToolsDoc() {
   out.push('');
   out.push(`${catalog.length} tools in ${order.length} groups. Every mutating tool runs inside one undo group named \`MCP: <command>\` in After Effects.`);
   out.push('');
+  out.push(`${core.size} core tools are always on (marked **core** below). Every other tool belongs to the pack named after its group: switch packs on with \`tool-packs\`, run a tool whose pack is off with \`call-tool\`, or start the server with \`AE_MCP_TOOLS=all\` (or a comma list of packs).`);
+  out.push('');
   out.push('Shared argument shapes:');
   out.push('');
   out.push('- `comp`: `{id}` or `{name}`; omit for the active composition.');
@@ -250,13 +254,13 @@ export async function generateToolsDoc() {
   out.push('## Contents');
   out.push('');
   for (const g of order) {
-    out.push(`- ${GROUP_TITLES[g] ?? g} (${groups.get(g).length}): ${groups.get(g).map((e) => `\`${e.name}\``).join(', ')}`);
+    out.push(`- ${GROUP_TITLES[g] ?? g} (${groups.get(g).length}): ${groups.get(g).map((e) => `\`${e.name}\`${core.has(e.name) ? ' **core**' : ''}`).join(', ')}`);
   }
   out.push('');
   for (const g of order) {
     out.push(`## ${GROUP_TITLES[g] ?? g}`);
     out.push('');
-    for (const entry of groups.get(g).sort((a, b) => a.name.localeCompare(b.name))) out.push(renderTool(entry));
+    for (const entry of groups.get(g).sort((a, b) => a.name.localeCompare(b.name))) out.push(renderTool(entry, core));
   }
   const text = out.join('\n').replace(new RegExp(String.fromCharCode(0x2014), 'g'), ',');
   fs.mkdirSync(path.dirname(outFile), { recursive: true });

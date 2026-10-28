@@ -1458,6 +1458,21 @@ MCP.charts.sliceHead = function (ctx, items, idx, growRef) {
         "var g = Math.max(0, Math.min(1, " + growRef + " / 100));\n";
 };
 
+/**
+ * Rounded share source: cs_share(V, tot, idx) gives slice idx's percent at the label's decimals, rounded so the
+ * labels add up to exactly 100 (largest remainder; ties go to the earlier slice).
+ */
+MCP.charts.shareSrc = function (decimals) {
+    return "function cs_share(V, tot, idx) {\n" +
+        "  var m = Math.pow(10, " + decimals + "), fl = [], rem = [], ord = [], sum = 0, i, x, f;\n" +
+        "  if (!(tot > 0)) { return 0; }\n" +
+        "  for (i = 0; i < V.length; i++) { x = Math.round(Math.max(0, V[i]) / tot * 100 * m * 1e6) / 1e6; f = Math.floor(x); fl.push(f); rem.push(x - f); ord.push(i); sum += f; }\n" +
+        "  ord.sort(function (a, b) { return rem[b] - rem[a] || a - b; });\n" +
+        "  for (i = 0; i < Math.round(100 * m - sum) && i < ord.length; i++) { fl[ord[i]] += 1; }\n" +
+        "  return fl[idx] / m;\n" +
+        "}\n";
+};
+
 MCP.register("createPieChart", function (args) {
     var comp = MCP.resolveComp(args.comp);
     var items = MCP.charts.dataItems(args.data, { min: 1, max: 24, nonNegative: true });
@@ -1524,7 +1539,7 @@ MCP.register("createPieChart", function (args) {
     var lr = where === "inside" ? (donut ? rMid : R * 0.62) : R + Math.round(18 * ctx.k) + lSize * 0.9;
     var leading = Math.round(lSize * 1.15);
     for (i = 0; i < n && labels !== "none"; i++) {
-        var pct = MCP.charts.format(pctFmt, items[i].value / total * 100);
+        var pct = MCP.charts.format(pctFmt, MCP.charts.compile(MCP.charts.shareSrc(pctFmt.decimals), "cs_share")(vals, total, i));
         var init = labels === "label" ? items[i].label : (labels === "value" ? MCP.charts.format(valFmt, items[i].value) : pct);
         if (labels === "label-percent") { init = items[i].label + "\r" + pct; }
         sliceLabels.push(MCP.charts.newText(ctx, "Label " + items[i].label, "slice-label", items[i].label, init, {
@@ -1586,8 +1601,8 @@ MCP.register("createPieChart", function (args) {
         MCP.charts.expr(ctx, LL, MCP.charts.opacity(LL), lh + "sh < " + MCP.charts.n(minShare) + " ? 0 : linear(g, 0.25, 0.7, 0, 100);", "Opacity");
         var textCode = null;
         if (labels === "value") { textCode = MCP.charts.fmtSrc(valFmt, "cs_fmt") + "cs_fmt(V[" + i + "] * " + Sc + " * g);"; }
-        else if (labels === "percent") { textCode = MCP.charts.fmtSrc(pctFmt, "cs_fmt") + "cs_fmt(sh * g);"; }
-        else if (labels === "label-percent") { textCode = MCP.charts.fmtSrc(pctFmt, "cs_fmt") + MCP.charts.q(items[i].label) + " + \"\\r\" + cs_fmt(sh * g);"; }
+        else if (labels === "percent") { textCode = MCP.charts.fmtSrc(pctFmt, "cs_fmt") + MCP.charts.shareSrc(pctFmt.decimals) + "cs_fmt(cs_share(V, tot, " + i + ") * g);"; }
+        else if (labels === "label-percent") { textCode = MCP.charts.fmtSrc(pctFmt, "cs_fmt") + MCP.charts.shareSrc(pctFmt.decimals) + MCP.charts.q(items[i].label) + " + \"\\r\" + cs_fmt(cs_share(V, tot, " + i + ") * g);"; }
         if (textCode) { MCP.charts.expr(ctx, LL, MCP.charts.sourceText(LL), lh + textCode, "Source Text"); }
     }
     if (centerTotal) {

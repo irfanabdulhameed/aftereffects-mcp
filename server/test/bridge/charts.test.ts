@@ -1422,6 +1422,15 @@ describe('create-pie-chart in a fake After Effects', () => {
     expect(shapeItem(c2, 'Pie Chart / Slice Pro', 'Slice', 'Trim').property('ADBE Vector Trim Offset').value).toBe(-90);
     expect(() => run('createPieChart', 'create-pie-chart', { data: PLANS, innerRadius: 0, center: true })).toThrow(/donut/);
   });
+
+  it('percent labels always add up to 100', () => {
+    const c3 = newComp('Pie3');
+    run('createPieChart', 'create-pie-chart', { data: [{ label: 'A', value: 3 }, { label: 'B', value: 5 }] });
+    expect([textAt(c3, 'Pie Chart / Label A', 3), textAt(c3, 'Pie Chart / Label B', 3)]).toEqual(['38%', '62%']);
+    const c4 = newComp('Pie4');
+    run('createPieChart', 'create-pie-chart', { data: [{ label: 'A', value: 1 }, { label: 'B', value: 1 }, { label: 'C', value: 1 }], name: 'Thirds' });
+    expect(['A', 'B', 'C'].map((l) => textAt(c4, `Thirds / Label ${l}`, 3))).toEqual(['34%', '33%', '33%']);
+  });
 });
 
 describe('create-stat and create-progress in a fake After Effects', () => {

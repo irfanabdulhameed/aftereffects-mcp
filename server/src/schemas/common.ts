@@ -12,32 +12,20 @@
 import { z } from 'zod';
 export { Color, toRgba, toHex } from './color.js';
 
+// Shared shapes keep one short description: they repeat in most tools, so every word costs the client hundreds of times.
 export const CompRef = z
-  .object({
-    id: z.number().int().optional().describe('Composition item id from list-compositions. Highest precedence.'),
-    name: z.string().optional().describe('Composition name, exact match first, then case-insensitive.'),
-    active: z.boolean().optional().describe('true selects the composition open in the viewer. Also the default when nothing else is given.'),
-  })
-  .describe('Which composition. Precedence: id, then name, then the active composition.');
+  .object({ id: z.number().int().optional(), name: z.string().optional(), active: z.boolean().optional() })
+  .describe('Composition: {id}, {name} (exact, then any case) or {active: true}. Default: the active composition.');
 export type CompRefInput = z.input<typeof CompRef>;
 
 export const LayerRef = z
-  .object({
-    index: z.number().int().positive().optional().describe('1-based layer index as shown in the timeline (1 is the top layer). Highest precedence.'),
-    name: z.string().optional().describe('Layer name. Exact match first, then case-insensitive. Errors if more than one layer has that name.'),
-    id: z.number().int().optional().describe('Layer id from list-layers. Stable across reordering.'),
-  })
-  .describe('Which layer. Precedence: index, then id, then name. Get indices from list-layers first.');
+  .object({ index: z.number().int().positive().optional(), name: z.string().optional(), id: z.number().int().optional() })
+  .describe('Layer: {index} (1 = top), {id} (stable) or {name} (must be unique).');
 export type LayerRefInput = z.input<typeof LayerRef>;
 
 export const PropertyPath = z
   .union([z.string(), z.array(z.union([z.string(), z.number().int().positive()])).min(1)])
-  .describe(
-    'Property path from the layer root, using "/" between levels. Display names or matchNames both work, ' +
-      'for example "Transform/Position", "Effects/Gaussian Blur/Blurriness", "Text/Source Text", "Masks/Mask 1/Mask Path", ' +
-      'or "ADBE Transform Group/ADBE Position". A bare transform name such as "Opacity" is also accepted. ' +
-      'An array of names or 1-based indices is accepted too.'
-  );
+  .describe('Property path: "Transform/Position", "Effects/Gaussian Blur/Blurriness", "Text/Source Text", display or match names, or an array of names and 1-based indices.');
 
 export const EASING_PRESETS = [
   'linear',
@@ -54,10 +42,10 @@ export type EasingPreset = (typeof EASING_PRESETS)[number];
 
 export const CustomEase = z.object({
   type: z.literal('custom'),
-  inSpeed: z.number().optional().describe('Speed of the incoming handle at the arriving key. Default 0.'),
-  inInfluence: z.number().min(0.1).max(100).optional().describe('Influence of the incoming handle, 0.1 to 100. Default 33.33.'),
-  outSpeed: z.number().optional().describe('Speed of the outgoing handle at the previous key. Default 0.'),
-  outInfluence: z.number().min(0.1).max(100).optional().describe('Influence of the outgoing handle, 0.1 to 100. Default 33.33.'),
+  inSpeed: z.number().optional(),
+  inInfluence: z.number().min(0.1).max(100).optional(),
+  outSpeed: z.number().optional(),
+  outInfluence: z.number().min(0.1).max(100).optional(),
 });
 
 export const BezierEase = z.object({
@@ -71,16 +59,13 @@ export const BezierEase = z.object({
 export const Easing = z
   .union([
     z.enum(EASING_PRESETS),
-    z.string().regex(/^@style\.[A-Za-z0-9_.-]+$/).describe('A reference into the style file, for example "@style.entrance".'),
+    z.string().regex(/^@style\.[A-Za-z0-9_.-]+$/),
     CustomEase,
     BezierEase,
   ])
   .describe(
-    'How the motion arrives at this keyframe (the segment from the previous key to this one). ' +
-      'Presets: linear, ease (Easy Ease 33/33), ease-in (slow start), ease-out (slow end, use for entrances), ease-in-out, ' +
-      'smooth (continuous through the key), snappy (75 out, 25 in), overshoot (adds a small overshoot key before this one), hold. ' +
-      'Or {type:"custom", inSpeed, inInfluence, outSpeed, outInfluence}, or {type:"bezier", x1,y1,x2,y2} like CSS cubic-bezier. ' +
-      'Or "@style.<name>" to use an easing from the style file.'
+    'Easing into this key: a preset (ease = Easy Ease, ease-out for entrances, snappy 75/25, overshoot adds a key, smooth continues through), ' +
+      '{type:"custom", inSpeed, inInfluence, outSpeed, outInfluence} (influence 0.1-100, default 33.33, speeds 0), {type:"bezier", x1, y1, x2, y2} as CSS, or "@style.<name>".'
   );
 export type EasingInput = z.input<typeof Easing>;
 

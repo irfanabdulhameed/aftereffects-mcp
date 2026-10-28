@@ -77,8 +77,8 @@ export function toHex(rgba: readonly number[]): string {
 /** zod schema that accepts every supported colour form and outputs [r,g,b,a] in 0..1. */
 export const Color = z
   .union([
-    z.string().describe('Hex colour such as "#1E90FF" or "#1E90FF80", or a basic name like "white".'),
-    z.array(z.number()).min(3).max(4).describe('[r,g,b] or [r,g,b,a]. Values in 0..1, or 0..255 if any value is above 1.'),
+    z.string(),
+    z.array(z.number()).min(3).max(4),
     z.object({ r: z.number(), g: z.number(), b: z.number(), a: z.number().optional() }),
   ])
   .transform((v, ctx) => {
@@ -89,6 +89,6 @@ export const Color = z
       return z.NEVER;
     }
   })
-  .describe('Colour. Accepts "#RRGGBB", "#RRGGBBAA", [r,g,b], [r,g,b,a] (0..1 or 0..255), or {r,g,b,a}.');
+  .describe('Colour: "#RRGGBB", "#RRGGBBAA", a basic name, [r,g,b(,a)] in 0-1 (or 0-255 if any value is above 1), or {r,g,b,a}.');
 
 export type ColorInput = z.input<typeof Color>;

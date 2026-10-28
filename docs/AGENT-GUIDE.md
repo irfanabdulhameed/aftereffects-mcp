@@ -14,6 +14,8 @@ What follows from that:
 - A timeout is not a failure of the command. If the error says `bridge-not-running`, the panel is closed or paused and nothing ran. If it says `timeout`, the command is still running inside After Effects; wait and call `get-results` with the id it gives you.
 - Layer indices shift when layers are created, deleted or moved. After any of those, call `list-layers` again or address layers by `id` or `name`.
 
+- Tools come in packs. The core tools are always listed; `tool-packs` lists the packs (charts, ui-demo, scenes, transitions, motion-rigs, components, camera-3d, masks, styles, markers-audio, time and more) and switches them on. Switch on what the job needs before you plan it. If a tool you switched on does not appear, run it with `call-tool` (`list-tools` with `names` and `schema: true` shows its inputs).
+
 ## 2. Addressing
 
 Every tool that touches a composition takes `comp`; every tool that touches a layer takes `layer`.

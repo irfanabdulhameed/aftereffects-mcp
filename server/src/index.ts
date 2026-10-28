@@ -8,11 +8,22 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { getBridge } from './bridge/client.js';
 import { registerAllTools } from './tools/all.js';
+import { applyPacks, parseToolSelection } from './tools/packs.js';
 import { SERVER_VERSION } from './version.js';
 
-export function createServer(): McpServer {
-  const server = new McpServer({ name: 'AfterEffectsMCP', version: SERVER_VERSION });
+const INSTRUCTIONS =
+  'Builds and edits inside a running Adobe After Effects. The core tools are always listed; more come in packs ' +
+  '(charts, ui-demo, scenes, transitions, motion-rigs, components, camera-3d, masks, styles, markers-audio and others): ' +
+  'call tool-packs to see and switch them on, and call-tool if new tools do not appear. Start with get-help for the workflow; ' +
+  'check your work with see-frame before reporting.';
+
+/** tools: "core" (default), "all", or a comma list of packs; defaults to AE_MCP_TOOLS. */
+export function createServer(options: { tools?: string } = {}): McpServer {
+  const server = new McpServer({ name: 'AfterEffectsMCP', version: SERVER_VERSION }, { instructions: INSTRUCTIONS });
   registerAllTools(server);
+  const selection = parseToolSelection(options.tools ?? process.env.AE_MCP_TOOLS);
+  if (selection.unknown.length) console.error(`AE_MCP_TOOLS: unknown pack ${selection.unknown.join(', ')} (ignored).`);
+  applyPacks(server, selection.packs);
   return server;
 }
 

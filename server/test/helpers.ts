@@ -36,7 +36,7 @@ export async function makeTestServer() {
   const { createServer } = await import('../src/index.js');
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
   const { InMemoryTransport } = await import('@modelcontextprotocol/sdk/inMemory.js');
-  const server = createServer();
+  const server = createServer({ tools: 'all' });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: 'test-client', version: '0.0.0' });

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.4.0 (2026-10-28)
+
+A smaller tool list for every client.
+
+- Packs: 61 core tools are always on; every other group is a pack. `tool-packs` lists packs and switches them on or off (one tools/list_changed notice), `call-tool` runs any tool whose pack is off, `list-tools` shows which tools are active and their input schemas on request. `AE_MCP_TOOLS` picks what is on at start: `core` (default), `all`, or a comma list of packs.
+- Shorter definitions: the shared composition, layer, easing, colour and property path inputs carry one short description instead of one per field, and clients get each description without its Inputs and Example parts (the full text stays in docs/TOOLS.md and list-tools). The core list is about 40k tokens; all 263 tools about 196k, down from about 255k.
+- The server sends instructions on connect that point the agent to packs and get-help.
+- Pie and donut percent labels always add up to 100 (largest remainder), so 37.5 / 62.5 reads 38 % and 62 %, not 38 % and 63 %.
+
 ## 2.3.0 (2026-10-28)
 
 32 new tools, 261 in all.

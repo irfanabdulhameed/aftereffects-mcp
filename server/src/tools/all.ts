@@ -35,6 +35,7 @@ import { registerTransitionTools } from './transitions.js';
 import { registerUiDemoTools } from './ui-demo.js';
 import { registerMotionRigTools } from './motion-rigs.js';
 import { registerChartTools } from './charts.js';
+import { registerPackTools } from './packs.js';
 
 export function registerAllTools(server: McpServer): void {
   registerBatchTools(server);
@@ -69,4 +70,5 @@ export function registerAllTools(server: McpServer): void {
   registerMotionRigTools(server);
   registerChartTools(server);
   registerHelpTools(server);
+  registerPackTools(server);
 }

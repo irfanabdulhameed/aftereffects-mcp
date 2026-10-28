@@ -8,7 +8,7 @@
  *   - is recorded in the catalog used by list-tools and the docs generator
  */
 
-import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer, RegisteredTool, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { BridgeClient, getBridge, TimeoutClass } from '../bridge/client.js';
@@ -100,6 +100,38 @@ export function findTool(name: string): CatalogEntry | undefined {
 
 export const catalog: CatalogEntry[] = [];
 
+/** The registered tool and its callback, per name, for packs and call-tool. */
+const handles = new Map<string, { registered: RegisteredTool; callback: (args: Record<string, unknown>) => Promise<CallToolResult> }>();
+
+export function isToolEnabled(name: string): boolean {
+  return handles.get(name)?.registered.enabled ?? false;
+}
+
+/** Switches tools on or off and sends one list-changed notice (the SDK's enable() sends one per tool). */
+export function setToolsEnabled(server: McpServer, names: string[], enabled: boolean): void {
+  let changed = false;
+  for (const name of names) {
+    const h = handles.get(name);
+    if (h && h.registered.enabled !== enabled) {
+      h.registered.enabled = enabled;
+      changed = true;
+    }
+  }
+  if (changed) server.sendToolListChanged();
+}
+
+/** Validates args against the tool's schema and runs it, on or off. Errors come back as isError results. */
+export async function invokeTool(name: string, args: Record<string, unknown>): Promise<CallToolResult> {
+  const entry = findTool(name);
+  const h = handles.get(name);
+  if (!entry || !h) return jsonResult({ tool: name, error: 'not-found', message: `No tool named "${name}".` }, true);
+  const parsed = z.object(entry.input).safeParse(args);
+  if (!parsed.success) {
+    return jsonResult({ tool: name, error: 'invalid-argument', message: parsed.error.issues.map((i) => `${i.path.join('.') || 'args'}: ${i.message}`).join('; ') }, true);
+  }
+  return h.callback(parsed.data as Record<string, unknown>);
+}
+
 export function kebabToCamel(name: string): string {
   return name.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 }
@@ -119,6 +151,16 @@ export function errorResult(err: unknown, toolName: string): CallToolResult {
   }
   const e = err as Error;
   return jsonResult({ tool: toolName, error: 'tool-failed', message: e && e.message ? e.message : String(err) }, true);
+}
+
+/**
+ * The description clients receive: the full text without its "Inputs:" part (the schema describes every input) and
+ * its "Example:". The full text stays in the catalog, docs/TOOLS.md and list-tools.
+ */
+export function clientDescription(full: string): string {
+  return full
+    .replace(/\s*(?:Inputs|Example):[\s\S]*?(?=\s(?:Use when|Do not use for|Inputs|Returns|Notes|Example):|$)/g, '')
+    .trim();
 }
 
 export function defineTool<S extends z.ZodRawShape>(server: McpServer, def: ToolDefinition<S>): void {
@@ -165,15 +207,16 @@ export function defineTool<S extends z.ZodRawShape>(server: McpServer, def: Tool
       return errorResult(err, def.name);
     }
   };
-  server.registerTool(
+  const registered = server.registerTool(
     def.name,
     {
-      description: def.description,
+      description: clientDescription(def.description),
       inputSchema: def.input,
       annotations: { readOnlyHint: def.mutating === false, destructiveHint: def.mutating !== false, openWorldHint: false },
     },
     callback as unknown as ToolCallback<S>
   );
+  handles.set(def.name, { registered, callback: callback as unknown as (args: Record<string, unknown>) => Promise<CallToolResult> });
 }
 
 /** Names of every tool that goes through the bridge, mapped to their command. */
