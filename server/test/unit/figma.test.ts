@@ -26,11 +26,12 @@ describe('planFigma', () => {
     expect(plan.layers.some((l) => l.name === 'Old badge')).toBe(false);
   });
 
-  it('keeps per-corner radii as path geometry and notes the gradient', () => {
+  it('keeps per-corner radii as path geometry and rebuilds the gradient', () => {
     const band = by('Header band');
     expect(band.kind).toBe('path');
     expect(band.paths?.[0].vertices[0]).toEqual([-276, -60]);
-    expect(plan.notes.some((n) => /Header band: gradient linear fill/.test(n))).toBe(true);
+    expect(band.gradient).toMatchObject({ type: 'linear', fade: false });
+    expect(band.gradient?.stops.map((st) => st.position)).toEqual([0, 1]);
   });
 
   it('converts text metrics and alignment', () => {

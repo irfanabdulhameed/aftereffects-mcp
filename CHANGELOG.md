@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.1 (2026-10-28)
+
+- import-figma rebuilds linear and radial gradient fills (fades to transparent included) with Gradient Ramp, kept inside the shape and following the layer, instead of drawing their first colour; a frame without a fill gets a white comp background like the Figma canvas.
+
 ## 2.6.0 (2026-10-28)
 
 Eleven new tools, 278 in all; the core stays at 62.

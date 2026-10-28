@@ -42,6 +42,8 @@ export interface LayerSpec {
   blur?: number;
   shadows?: Array<{ color: Rgba; dx: number; dy: number; radius: number; spread: number }>;
   backgroundBlur?: number;
+  /** Linear or radial gradient fill: stops 0..1, handles in the node's own unit box (0..1). */
+  gradient?: { type: 'linear' | 'radial'; stops: Array<{ position: number; color: Rgba }>; handles: Array<[number, number]>; fade: boolean };
 }
 
 export interface FigmaPlan {
@@ -63,12 +65,35 @@ function rgba(c: { r: number; g: number; b: number; a?: number }, opacity = 1): 
   return [c.r, c.g, c.b, (c.a ?? 1) * opacity];
 }
 
-/** The first visible solid fill (gradients give their first stop, with a note). */
+type Gradient = NonNullable<LayerSpec['gradient']>;
+
+/** The first visible linear or radial gradient fill, rebuilt by the builder with Gradient Ramp. */
+export function gradientOf(fills: any[] | undefined, notes: string[], name: string): Gradient | null {
+  for (const f of fills ?? []) {
+    if (f.visible === false) continue;
+    if (f.type === 'SOLID') return null;
+    if ((f.type === 'GRADIENT_LINEAR' || f.type === 'GRADIENT_RADIAL') && f.gradientStops?.length >= 2 && f.gradientHandlePositions?.length >= 2) {
+      const op = f.opacity ?? 1;
+      const stops = (f.gradientStops as any[]).map((st) => ({ position: Number(st.position), color: rgba(st.color, op) }));
+      if (stops.length > 2) notes.push(`${name}: a ${stops.length}-stop gradient; the first and last stops were used.`);
+      const a = stops[0].color;
+      const b = stops[stops.length - 1].color;
+      const fade = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < 0.004 && Math.abs(a[3] - b[3]) > 0.001;
+      if (!fade && Math.abs(a[3] - b[3]) > 0.001) notes.push(`${name}: a gradient that changes both colour and transparency; its colour was kept, its transparency taken from the first stop.`);
+      return { type: f.type === 'GRADIENT_RADIAL' ? 'radial' : 'linear', stops: [stops[0], stops[stops.length - 1]], handles: (f.gradientHandlePositions as any[]).map((h) => [Number(h.x), Number(h.y)] as [number, number]), fade };
+    }
+    return null;
+  }
+  return null;
+}
+
+/** The first visible solid fill (gradients give their first stop; linear and radial ones are rebuilt from gradientOf). */
 function firstFill(fills: any[] | undefined, notes: string[], name: string): Rgba | null {
   for (const f of fills ?? []) {
     if (f.visible === false) continue;
     const op = f.opacity ?? 1;
     if (f.type === 'SOLID') return rgba(f.color, op);
+    if ((f.type === 'GRADIENT_LINEAR' || f.type === 'GRADIENT_RADIAL') && !/stroke$/.test(name) && f.gradientStops?.length) return rgba(f.gradientStops[0].color, op);
     if (/^GRADIENT_/.test(f.type) && f.gradientStops?.length) {
       notes.push(`${name}: ${f.type.toLowerCase().replace('_', ' ')} fill drawn in its first colour; add the gradient with set-shape-gradient.`);
       return rgba(f.gradientStops[0].color, op);
@@ -151,6 +176,8 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
       if (fill || stroke || img) {
         const spec = base(n, img ? 'image' : 'rect', here, inherited);
         spec.fill = fill;
+        const grad = gradientOf(n.fills, notes, here);
+        if (grad) spec.gradient = grad;
         spec.stroke = stroke;
         spec.radius = S(n.cornerRadius ?? 0);
         if (img) {
@@ -189,6 +216,8 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
       const img = hasImageFill(n.fills);
       const spec = base(n, img ? 'image' : type === 'ELLIPSE' ? 'ellipse' : 'rect', here, inherited);
       spec.fill = firstFill(n.fills, notes, here);
+      const grad = gradientOf(n.fills, notes, here);
+      if (grad) spec.gradient = grad;
       spec.stroke = strokeOf(n, here);
       const radii = n.rectangleCornerRadii as number[] | undefined;
       if (type === 'RECTANGLE' && radii && new Set(radii).size > 1) {
@@ -227,6 +256,8 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
       spec.paths = fillGeo.paths;
       spec.fillRule = fillGeo.evenOdd ? 'even-odd' : 'non-zero';
       spec.fill = firstFill(n.fills, notes, here);
+      const grad = gradientOf(n.fills, notes, here);
+      if (grad) spec.gradient = grad;
     }
     if (strokeGeo) {
       spec.strokePaths = strokeGeo.paths;
@@ -280,7 +311,7 @@ export function registerFigmaTools(server: McpServer): void {
       'Use when: a design made in Figma should be animated in After Effects without screenshots. Do not use for: an .svg or .ai file (import-vector-as-shapes) or icons (add-icon). ' +
       'Inputs: url, a Figma link with ?node-id= of one frame, with token (default FIGMA_TOKEN); or json, a file with the Figma REST JSON of a frame (a plugin can write it with exportAsync JSON_REST_V1); scale (default 1, for example 1.333 to take a 1440 frame to 1920); comp to build into (default a new comp named after the frame); frameRate (default 30); duration (default 10); imagesDir for downloaded images (default <bridge>/figma). ' +
       'Returns: the comp, counts per layer kind, layers that failed, fonts that are missing on this Mac and notes on anything approximated. ' +
-      'Notes: the comp is flat (one layer per Figma node, named by its path); group them into components afterwards. Gradients take their first colour, mixed text styles their main style, and clipping is not rebuilt. Undoable in steps. ' +
+      'Notes: the comp is flat (one layer per Figma node, named by its path); group them into components afterwards. Linear and radial gradients are rebuilt with Gradient Ramp (first and last stop); angular and diamond gradients take their first colour, mixed text styles their main style, and clipping is not rebuilt. Undoable in steps. ' +
       'Example: url "https://www.figma.com/design/AbC123/Site?node-id=12-34", scale 1.333.',
     input: {
       url: z.string().optional().describe('Figma link to one frame, with ?node-id=.'),

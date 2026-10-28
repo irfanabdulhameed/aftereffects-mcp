@@ -62,6 +62,43 @@ MCP.figma.addPaths = function (layer, gi, paths) {
     }
 };
 
+/** A Figma gradient on a shape layer: Gradient Ramp between the handles (a grey ramp turned into transparency for a fade),
+ *  then Set Matte from the layer itself so the gradient stays inside the shape. */
+MCP.figma.gradient = function (layer, s) {
+    var g = s.gradient, w = s.w, h = s.h;
+    var pt = function (hnd) { return [hnd[0] * w - w / 2, hnd[1] * h - h / 2]; };
+    var a = g.stops[0].color, b = g.stops[1].color;
+    var fx = function (match) {
+        var e = layer.property("ADBE Effect Parade").addProperty(match);
+        return layer.property("ADBE Effect Parade").property(e.propertyIndex);
+    };
+    var ramp = fx("ADBE Ramp");
+    ramp.name = "Figma gradient";
+    ramp = layer.property("ADBE Effect Parade").property("Figma gradient");
+    // Shape layers render continuously: their effects work in comp space, so the handles go through toComp and follow the layer.
+    var p0 = pt(g.handles[0]), p1 = pt(g.handles[1]);
+    ramp.property("ADBE Ramp-0001").expression = "toComp([" + MCP.round(p0[0], 3) + ", " + MCP.round(p0[1], 3) + "]);";
+    ramp.property("ADBE Ramp-0003").expression = "toComp([" + MCP.round(p1[0], 3) + ", " + MCP.round(p1[1], 3) + "]);";
+    ramp.property("ADBE Ramp-0005").setValue(g.type === "radial" ? 2 : 1);
+    if (g.fade) {
+        ramp.property("ADBE Ramp-0002").setValue([a[3], a[3], a[3], 1]);
+        ramp.property("ADBE Ramp-0004").setValue([b[3], b[3], b[3], 1]);
+        var sc = fx("ADBE Shift Channels");
+        sc.property("ADBE Shift Channels-0001").setValue(7);
+        sc.property("ADBE Shift Channels-0002").setValue(9);
+        sc.property("ADBE Shift Channels-0003").setValue(9);
+        sc.property("ADBE Shift Channels-0004").setValue(9);
+        var fl = fx("ADBE Fill");
+        fl.property("ADBE Fill-0002").setValue([a[0], a[1], a[2], 1]);
+    } else {
+        ramp.property("ADBE Ramp-0002").setValue([a[0], a[1], a[2], 1]);
+        ramp.property("ADBE Ramp-0004").setValue([b[0], b[1], b[2], 1]);
+    }
+    var sm = fx("ADBE Set Matte3");
+    sm.property("ADBE Set Matte3-0001").setValue(layer.index);
+    sm.property("ADBE Set Matte3-0002").setValue(4);
+};
+
 MCP.figma.place = function (layer, s) {
     var tg = layer.property("ADBE Transform Group");
     tg.property("ADBE Position").setValue([s.x + s.w / 2, s.y + s.h / 2]);
@@ -107,6 +144,7 @@ MCP.figma.shape = function (comp, s, notes) {
         }
     }
     MCP.figma.place(layer, s);
+    if (s.gradient && s.kind !== "image") { MCP.figma.gradient(layer, s); }
     return layer;
 };
 
@@ -184,8 +222,10 @@ MCP.register("buildFigma", function (args) {
         comp = app.project.items.addComp(String(frame.name), w, h, 1, MCP.num(args.duration, 10), MCP.num(args.frameRate, 30));
         created = true;
         if (frame.background) { comp.bgColor = [frame.background[0], frame.background[1], frame.background[2]]; }
+        else { comp.bgColor = [1, 1, 1]; }
     }
     var notes = [], made = [], failed = [], missing = {}, counts = {};
+    if (created && !frame.background) { notes.push("The frame has no fill, so the comp background was set to white (the Figma canvas); it renders transparent."); }
     if (created && frame.background) {
         var bg = comp.layers.addSolid([frame.background[0], frame.background[1], frame.background[2]], frame.name + " background", comp.width, comp.height, 1, comp.duration);
         bg.locked = false;
