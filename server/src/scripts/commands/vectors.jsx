@@ -691,6 +691,12 @@ MCP.register("shapeFromSvgPath", function (args) {
         if (MCP.isDefined(args.strokeColor)) { stroke.property("ADBE Vector Stroke Color").setValue(MCP.color.rgba(args.strokeColor)); }
         var sw = MCP.isDefined(args.strokeWidth) && Number(args.strokeWidth) > 0 ? Number(args.strokeWidth) : 2;
         stroke.property("ADBE Vector Stroke Width").setValue(sw);
+        var caps = { butt: 1, round: 2, square: 3 }, joins = { miter: 1, round: 2, bevel: 3 };
+        if (MCP.isDefined(args.lineCap) && caps[args.lineCap]) { stroke.property("ADBE Vector Stroke Line Cap").setValue(caps[args.lineCap]); }
+        if (MCP.isDefined(args.lineJoin) && joins[args.lineJoin]) { stroke.property("ADBE Vector Stroke Line Join").setValue(joins[args.lineJoin]); }
+    }
+    if (MCP.isDefined(args.groupOpacity)) {
+        MCP.vectors.groupAt(layer, chain).property("ADBE Vector Transform Group").property("ADBE Vector Group Opacity").setValue(Number(args.groupOpacity));
     }
     group = MCP.vectors.groupAt(layer, chain);
     items = MCP.shape.itemsOf(group);

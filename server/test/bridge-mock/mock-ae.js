@@ -29,7 +29,7 @@ export function startMockBridge(options = {}) {
   const frames = path.join(bridgeDir, 'frames');
   for (const d of [bridgeDir, queue, results, frames]) fs.mkdirSync(d, { recursive: true });
 
-  const state = { commandsRun: 0, errors: 0, lastCommand: null, lastCommandAt: null, busy: false, log: [], stopped: false, pending: [] };
+  const state = { commandsRun: 0, errors: 0, lastCommand: null, lastCommandAt: null, lastArgs: null, busy: false, log: [], stopped: false, pending: [] };
 
   function writeAtomic(file, text) {
     const tmp = path.join(path.dirname(file), `.tmp-${path.basename(file)}-${process.pid}`);
@@ -84,6 +84,7 @@ export function startMockBridge(options = {}) {
       // ignore
     }
     state.commandsRun++;
+    state.lastArgs = cmd.args;
     state.log.push({ command: cmd.command, status: envelope.status });
   }
 

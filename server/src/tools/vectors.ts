@@ -122,7 +122,7 @@ export function registerVectorTools(server: McpServer): void {
     description:
       'Draws SVG path data as After Effects bezier paths. The "d" string is parsed on the server (M, L, H, V, C, S, Q, T, A, Z, relative forms too; arcs become cubics; each subpath becomes a Path in one group) and written as a new shape layer, a new group, or the paths of an existing group. ' +
       'Use when: an icon or logo is available as SVG path data. Do not use for: whole .svg or .ai files (import-vector-as-shapes) or plain rectangles and ellipses (create-shape-layer). ' +
-      'Inputs: d; viewBox; size to fit into, or scale (wins) and offset; center (default true) puts the viewBox or path centre on the group origin; layer and group to add to or replace; name, groupName, position; fillColor, noFill, strokeColor, strokeWidth, fillRule. ' +
+      'Inputs: d; viewBox; size to fit into, or scale (wins) and offset; center (default true) centres it on the group origin; layer and group to add to or replace; name, groupName, position; fillColor, noFill, strokeColor, strokeWidth, fillRule, lineCap, lineJoin, groupOpacity (icons: add-icon). ' +
       'Returns: the layer, the group with its path count and property paths, vertexCount, the placement and the bounds in group pixels. ' +
       'Notes: holes need the right fill rule (most icon sets use non-zero). Replacing a group\'s paths keeps its fill, stroke and transform. Undoable in one step. ' +
       'Example: d "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z", viewBox [0, 0, 24, 24], size [240, 240], fillColor "#FFFFFF".',
@@ -144,6 +144,9 @@ export function registerVectorTools(server: McpServer): void {
       strokeColor: Color.optional(),
       strokeWidth: z.number().min(0).optional().describe('Stroke width in pixels. 0 or omitted means no stroke unless strokeColor is given (then 2).'),
       fillRule: z.enum(['non-zero', 'even-odd']).optional().describe('Fill rule for overlapping subpaths. Default non-zero, like SVG.'),
+      lineCap: z.enum(['butt', 'round', 'square']).optional().describe('Stroke line cap. Default After Effects\' butt.'),
+      lineJoin: z.enum(['miter', 'round', 'bevel']).optional().describe('Stroke line join. Default After Effects\' miter.'),
+      groupOpacity: z.number().min(0).max(100).optional().describe('Opacity of the group, 0 to 100. Default 100.'),
     },
     toBridgeArgs: (args) => {
       if (args.group !== undefined && !args.layer) throw new Error('group needs layer: pass the shape layer that holds the group.');
