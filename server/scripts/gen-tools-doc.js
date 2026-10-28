@@ -40,6 +40,7 @@ const GROUP_TITLES = {
   'transitions': 'Transitions',
   'ui-demo': 'UI demo kit',
   'motion-rigs': 'Motion rigs',
+  looks: 'Looks and backgrounds',
   'charts': 'Charts and data',
   help: 'Help',
 };

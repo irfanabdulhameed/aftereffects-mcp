@@ -43,6 +43,7 @@ export type ToolGroup =
   | 'ui-demo'
   | 'motion-rigs'
   | 'charts'
+  | 'looks'
   | 'help';
 
 export interface ToolContext {

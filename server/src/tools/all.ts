@@ -26,6 +26,7 @@ import { registerTransformTools } from './transform.js';
 import { registerWorkflowTools } from './workflow.js';
 import { registerComponentTools } from './components.js';
 import { registerIconTools } from './icons.js';
+import { registerLookTools } from './looks.js';
 import { registerLibraryTools } from './library.js';
 import { registerAnimateTools } from './animate.js';
 import { registerStyleTools } from './styles.js';
@@ -64,6 +65,7 @@ export function registerAllTools(server: McpServer): void {
   registerComponentTools(server);
   registerLibraryTools(server);
   registerIconTools(server);
+  registerLookTools(server);
   registerAnimateTools(server);
   registerStyleTools(server);
   registerCheckTools(server);
