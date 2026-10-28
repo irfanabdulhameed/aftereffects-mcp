@@ -1,6 +1,6 @@
 {
   "name": "aftereffects-mcp",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Model Context Protocol server and builder panels for Adobe After Effects",
   "private": true,
   "license": "MIT",

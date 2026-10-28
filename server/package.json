@@ -1,6 +1,6 @@
 {
   "name": "aftereffects-mcp-server",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Model Context Protocol server for Adobe After Effects with a file-based ExtendScript bridge",
   "main": "build/index.js",
   "type": "module",

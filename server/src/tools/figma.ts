@@ -21,8 +21,12 @@ type Rgba = [number, number, number, number];
 type FNode = Record<string, any>;
 
 export interface LayerSpec {
-  kind: 'rect' | 'ellipse' | 'path' | 'text' | 'image';
+  kind: 'rect' | 'ellipse' | 'path' | 'text' | 'image' | 'group';
   id: string;
+  /** Id of the group (comp) this layer goes into; null for the frame's own comp. */
+  parent: string | null;
+  /** Colour label: comp, text, shape, overlay, image. */
+  role?: 'comp' | 'text' | 'shape' | 'overlay' | 'image';
   name: string;
   path: string;
   x: number;
@@ -32,7 +36,7 @@ export interface LayerSpec {
   rotation: number;
   opacity: number;
   fill: Rgba | null;
-  stroke: { color: Rgba; width: number; align: 'center' | 'inside' | 'outside' } | null;
+  stroke: { color: Rgba; width: number; align: 'center' | 'inside' | 'outside'; sides?: { top: number; right: number; bottom: number; left: number } } | null;
   radius?: number;
   paths?: AeShapePath[];
   strokePaths?: AeShapePath[];
@@ -47,6 +51,7 @@ export interface LayerSpec {
 }
 
 export interface FigmaPlan {
+  rootName: string;
   frame: { id: string; name: string; width: number; height: number; background: Rgba | null };
   layers: LayerSpec[];
   notes: string[];
@@ -129,7 +134,91 @@ function geometry(list: any[] | undefined, w: number, h: number, scale: number):
   return { paths, evenOdd: list.some((g: any) => g.windingRule === 'EVENODD') };
 }
 
-const CONTAINERS = new Set(['FRAME', 'GROUP', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'SECTION', 'BOOLEAN_OPERATION_GROUP']);
+const AUTO = /^(Frame|Group|Component|Instance|Rectangle|Ellipse|Vector|Union|Subtract|Intersect|Exclude|Polygon|Star|Line|Section)( \d+)?$/i;
+
+function short(text: string, max = 28): string {
+  const t = text.replace(/\s+/g, ' ').trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
+/** Names layers for people: cards after their title, Title, Description, Icon, Background and edge fades instead of Figma's auto names; unique within each comp. */
+export function nameLayers(layers: LayerSpec[], frameWidth: number, frameHeight = Infinity): void {
+  const byParent = new Map<string | null, LayerSpec[]>();
+  for (const l of layers) byParent.set(l.parent, [...(byParent.get(l.parent) ?? []), l]);
+  /** The heading of a group: its top-most, then left-most text with words in it. */
+  const heading = (id: string): LayerSpec | undefined =>
+    texts(id)
+      .filter((t) => /[A-Za-z]{2,}/.test(t.text!.characters))
+      .sort((a, b) => a.y - b.y || a.x - b.x)[0];
+  const texts = (id: string): LayerSpec[] => {
+    const out: LayerSpec[] = [];
+    for (const l of byParent.get(id) ?? []) {
+      if (l.kind === 'text') out.push(l);
+      else if (l.kind === 'group') out.push(...texts(l.id));
+    }
+    return out;
+  };
+  const isAuto = (l: LayerSpec) => AUTO.test(l.name) || (l.kind === 'text' && l.text && l.name.trim() === l.text.characters.trim());
+  // Leaves first, so groups can be named after their title.
+  for (const l of layers) {
+    if (l.kind === 'group' || !isAuto(l)) continue;
+    if (l.kind === 'text') {
+      const siblings = (byParent.get(l.parent) ?? []).filter((x) => x.kind === 'text');
+      // The title is the biggest text with words in it (a big number such as "152" is a value, not a title).
+      const wordy = siblings.filter((x) => /[A-Za-z]{2,}/.test(x.text!.characters));
+      const biggest = Math.max(...wordy.map((x) => x.text!.size));
+      const isTitle = wordy.includes(l) && l.text!.size >= biggest && wordy.filter((x) => x.text!.size === biggest).length === 1;
+      l.name = siblings.length > 1 && isTitle ? 'Title' : siblings.length > 1 ? (/[A-Za-z]{2,}/.test(l.text!.characters) ? 'Description' : 'Value') : short(l.text!.characters);
+      l.role = 'text';
+    } else if (l.gradient?.fade && l.parent === null && l.x <= 1) {
+      l.name = 'Edge fade left';
+      l.role = 'overlay';
+    } else if (l.gradient?.fade && l.parent === null && l.x + l.w >= frameWidth - 1) {
+      l.name = 'Edge fade right';
+      l.role = 'overlay';
+    } else if (l.kind === 'path') l.name = 'Icon';
+    else if (l.kind === 'ellipse') l.name = l.w < 40 ? 'Dot' : 'Circle';
+    else if (l.kind === 'image') l.name = 'Image';
+    else l.name = 'Shape';
+  }
+  for (const l of layers) {
+    if (!l.role) l.role = l.kind === 'text' ? 'text' : l.kind === 'image' ? 'image' : l.kind === 'group' ? 'comp' : l.gradient?.fade ? 'overlay' : 'shape';
+  }
+  // Groups, deepest first: a card is named after its title; a group of cards is a row.
+  const groups = layers.filter((l) => l.kind === 'group').reverse();
+  for (const g of groups) {
+    if (!AUTO.test(g.name)) continue;
+    const kids = byParent.get(g.id) ?? [];
+    const childGroups = kids.filter((k) => k.kind === 'group');
+    const title = heading(g.id);
+    if (childGroups.length >= 2 && childGroups.every((k) => k.name.startsWith('Card'))) g.name = 'Card row';
+    else if (kids.some((k) => k.name === 'Background') && title) g.name = `${g.w < frameWidth * 0.6 && g.h < frameHeight * 0.6 ? 'Card' : 'Panel'} · ${short(title.text!.characters)}`;
+    else if (title) g.name = `Group · ${short(title.text!.characters)}`;
+    else g.name = childGroups.length ? 'Group' : 'Shapes';
+  }
+  // Generic names given in Figma ("Card", "Row 2", "content-container") get what they hold: a title, or the titles of their parts.
+  const GENERIC = /^(card|row|column|col|container|content[- ]?container|wrapper|stack|item|box|body|block|list|grid|frame|section)( \d+)?$/i;
+  for (const g of groups) {
+    if (!GENERIC.test(g.name)) continue;
+    const base = g.name.replace(/ \d+$/, '');
+    const label = (s: string) => s.replace(/^(Card|Panel|Group|Row) · /, '');
+    const parts = (byParent.get(g.id) ?? []).filter((k) => k.kind === 'group' && / · /.test(k.name)).map((k) => label(k.name));
+    const title = heading(g.id);
+    if (parts.length >= 2) g.name = `${base} · ${parts.slice(0, 2).map((t) => short(t, 22)).join(', ')}`;
+    else if (title) g.name = `${base} · ${short(title.text!.characters)}`;
+  }
+  // Unique names inside each comp.
+  for (const [, list] of byParent) {
+    const seen = new Map<string, number>();
+    for (const l of list) {
+      const n = (seen.get(l.name) ?? 0) + 1;
+      seen.set(l.name, n);
+      if (n > 1) l.name = `${l.name} ${n}`;
+    }
+  }
+}
+
+const CONTAINERS = new Set(['FRAME', 'GROUP', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'SECTION', 'SLOT', 'BOOLEAN_OPERATION_GROUP']);
 
 /** Flattens a Figma node tree into layer specs, bottom to top, relative to the frame and scaled. */
 export function planFigma(root: FNode, scale = 1): FigmaPlan {
@@ -140,10 +229,11 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
   const ox = fb.x;
   const oy = fb.y;
   const S = (v: number) => Math.round(v * scale * 1000) / 1000;
+  let parent: string | null = null;
   const base = (n: FNode, kind: LayerSpec['kind'], trail: string, inherited: number): LayerSpec => {
     const b = bounds(n);
     const op = Math.round((n.opacity ?? 1) * inherited * 1000) / 10;
-    const spec: LayerSpec = { kind, id: String(n.id), name: String(n.name ?? kind), path: trail, x: S(b.x - ox), y: S(b.y - oy), w: S(b.w), h: S(b.h), rotation: Math.round(b.rotation * 100) / 100, opacity: op, fill: null, stroke: null };
+    const spec: LayerSpec = { kind, id: String(n.id), parent, name: String(n.name ?? kind), path: trail, x: S(b.x - ox), y: S(b.y - oy), w: S(b.w), h: S(b.h), rotation: Math.round(b.rotation * 100) / 100, opacity: op, fill: null, stroke: null };
     const fx = (n.effects ?? []).filter((e: any) => e.visible !== false);
     const shadows = fx.filter((e: any) => e.type === 'DROP_SHADOW').map((e: any) => ({ color: rgba(e.color), dx: S(e.offset?.x ?? 0), dy: S(e.offset?.y ?? 0), radius: S(e.radius ?? 0), spread: S(e.spread ?? 0) }));
     if (shadows.length) spec.shadows = shadows;
@@ -156,8 +246,17 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
   };
   const strokeOf = (n: FNode, name: string) => {
     const c = firstFill(n.strokes, notes, `${name} stroke`);
-    if (!c || !(n.strokeWeight > 0)) return null;
+    if (!c) return null;
     const align = String(n.strokeAlign ?? 'CENTER').toLowerCase() as 'center' | 'inside' | 'outside';
+    // Per-side weights (a row with only a bottom line): drawn side by side; equal ones are a normal stroke.
+    const ind = n.individualStrokeWeights as { top: number; right: number; bottom: number; left: number } | undefined;
+    if (ind) {
+      const vals = [ind.top, ind.right, ind.bottom, ind.left].map((v) => Number(v) || 0);
+      if (vals.every((v) => v === vals[0])) return vals[0] > 0 ? { color: c, width: S(vals[0]), align } : null;
+      if (vals.every((v) => v === 0)) return null;
+      return { color: c, width: S(Math.max(...vals)), align, sides: { top: S(vals[0]), right: S(vals[1]), bottom: S(vals[2]), left: S(vals[3]) } };
+    }
+    if (!(n.strokeWeight > 0)) return null;
     return { color: c, width: S(n.strokeWeight), align };
   };
   const visit = (n: FNode, trail: string, inherited: number, isRoot: boolean) => {
@@ -173,8 +272,30 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
       const fill = isRoot ? null : firstFill(n.fills, notes, here);
       const img = isRoot ? null : hasImageFill(n.fills);
       const stroke = isRoot ? null : strokeOf(n, here);
+      const kids = (n.children ?? []).filter((c: FNode) => c.visible !== false);
+      const hasFx = (n.effects ?? []).some((e: any) => e.visible !== false);
+      // A container becomes its own comp unless it only wraps one child with nothing of its own.
+      // Layout-only frames (auto-layout wrappers with no fill, stroke or effect) do not get a comp: their children go
+      // into the nearest comp. A wrapper of two or more visible objects (a row of cards) does.
+      const visual = (c: FNode) => CONTAINERS.has(String(c.type)) && (firstFill(c.fills, [], '') || hasImageFill(c.fills) || (c.strokes ?? []).some((x: any) => x.visible !== false) || (c.effects ?? []).some((e: any) => e.visible !== false));
+      // Component instances are objects by definition: each one with content gets its own comp.
+      const isComponent = type === 'INSTANCE' || type === 'COMPONENT';
+      const own = !isRoot && !!(fill || stroke || img || hasFx || kids.filter(visual).length >= 2 || (isComponent && kids.length >= 2));
+      const outer = parent;
+      if (own) {
+        const g = base(n, 'group', here, inherited);
+        g.role = 'comp';
+        layers.push(g);
+        parent = g.id;
+      }
       if (fill || stroke || img) {
         const spec = base(n, img ? 'image' : 'rect', here, inherited);
+        delete spec.shadows;
+        delete spec.backgroundBlur;
+        delete spec.blur;
+        spec.name = 'Background';
+        spec.id = `${spec.id}#bg`;
+        if (own) spec.opacity = 100;
         spec.fill = fill;
         const grad = gradientOf(n.fills, notes, here);
         if (grad) spec.gradient = grad;
@@ -186,9 +307,11 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
         }
         layers.push(spec);
       }
-      if (n.clipsContent && !isRoot && (n.children ?? []).length) notes.push(`${here}: clips its content in Figma; the children are not clipped (precompose and mask them if they overflow).`);
-      const op = isRoot ? inherited : inherited * (n.opacity ?? 1);
-      for (const child of n.children ?? []) visit(child, isRoot ? '' : here, op, false);
+      if (n.clipsContent && !isRoot && !own && kids.length) notes.push(`${here}: clips its content in Figma; the children are not clipped.`);
+      // A container's own opacity sits on its comp layer, not on its children.
+      const op = isRoot || own ? 1 : inherited * (n.opacity ?? 1);
+      for (const child of n.children ?? []) visit(child, isRoot ? '' : here, own ? 1 : op, false);
+      parent = outer;
       return;
     }
     if (type === 'TEXT') {
@@ -267,7 +390,11 @@ export function planFigma(root: FNode, scale = 1): FigmaPlan {
     layers.push(spec);
   };
   visit(root, '', 1, true);
+  nameLayers(layers, S(fb.width), S(fb.height));
+  const firstGroup = layers.find((l) => l.kind === 'group' && l.parent === null);
+  const rootName = AUTO.test(String(root.name ?? '')) ? `Figma · ${firstGroup ? firstGroup.name : 'frame'}` : String(root.name);
   return {
+    rootName,
     frame: { id: String(root.id), name: String(root.name ?? 'Figma frame'), width: S(fb.width), height: S(fb.height), background: firstFill(root.fills, notes, String(root.name ?? 'frame')) },
     layers,
     notes: [...new Set(notes)],
@@ -293,7 +420,14 @@ export function pickNode(json: any, nodeId: string | null): FNode {
 }
 
 async function figmaGet(url: string, token: string): Promise<any> {
-  const res = await fetch(url, { headers: { 'X-Figma-Token': token }, signal: AbortSignal.timeout(60000) });
+  let res = await fetch(url, { headers: { 'X-Figma-Token': token }, signal: AbortSignal.timeout(60000) });
+  if (res.status === 429) {
+    // Rate limited: wait as long as Figma asks (at most a minute) and try once more.
+    const wait = Math.min(60, Number(res.headers.get('retry-after') ?? 20) || 20);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    res = await fetch(url, { headers: { 'X-Figma-Token': token }, signal: AbortSignal.timeout(60000) });
+  }
+  if (res.status === 429) throw Object.assign(new Error('Figma is rate-limiting this token right now. Try again in a few minutes.'), { rateLimited: true });
   if (res.status === 403) throw new Error('Figma refused the token (403). Make a personal access token with file read access in Figma > Settings > Security and set FIGMA_TOKEN.');
   if (res.status === 404) throw new Error('Figma could not find that file or node (404). Check the link and that the token\'s account can open the file.');
   if (!res.ok) throw new Error(`Figma API ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -323,11 +457,14 @@ export function registerFigmaTools(server: McpServer): void {
       frameRate: z.number().positive().max(120).optional().describe('New comp frame rate. Default 30.'),
       duration: z.number().positive().optional().describe('New comp duration in seconds. Default 10.'),
       imagesDir: z.string().optional().describe('Folder for image fills downloaded from Figma.'),
+      images: z.record(z.string()).optional().describe('Image files by Figma node id, for image fills exported without the API (for example from a Figma plugin).'),
+      refresh: z.boolean().optional().describe('Fetch the frame from Figma again. Default true; false reuses the copy kept from the last import.'),
     },
     handler: async (args, ctx) => {
       let json: any;
       let nodeId = args.nodeId ? args.nodeId.replace(/-/g, ':') : null;
       let fileKey: string | null = null;
+      let cachedNote: string | null = null;
       const token = args.token ?? process.env.FIGMA_TOKEN;
       if (args.json) {
         json = JSON.parse(fs.readFileSync(path.resolve(expandHome(args.json)), 'utf8'));
@@ -337,11 +474,31 @@ export function registerFigmaTools(server: McpServer): void {
         nodeId = nodeId ?? p.nodeId;
         if (!nodeId) throw new Error('The link has no node-id. In Figma, right-click the frame > Copy link to selection.');
         if (!token) throw new Error('Figma needs a personal access token: Figma > Settings > Security > Personal access tokens (file content read). Set FIGMA_TOKEN in the MCP settings or pass token. Without one, export the frame as JSON and pass json.');
-        json = await figmaGet(`https://api.figma.com/v1/files/${fileKey}/nodes?ids=${encodeURIComponent(nodeId)}&geometry=paths`, token);
+        // Each fetched frame is kept in the bridge folder: a rate-limited request falls back to it, refresh false reuses it.
+        const cacheFile = path.join(ctx.bridge.paths.root, 'figma', fileKey, `${nodeId.replace(/[^0-9A-Za-z_-]/g, '-')}.json`);
+        if (args.refresh === false && fs.existsSync(cacheFile)) json = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+        else {
+          try {
+            json = await figmaGet(`https://api.figma.com/v1/files/${fileKey}/nodes?ids=${encodeURIComponent(nodeId)}&geometry=paths`, token);
+            fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+            fs.writeFileSync(cacheFile, JSON.stringify(json));
+          } catch (err) {
+            if (!(err as { rateLimited?: boolean }).rateLimited || !fs.existsSync(cacheFile)) throw err;
+            json = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+            cachedNote = `Figma is rate-limiting, so the copy of this frame fetched at ${fs.statSync(cacheFile).mtime.toISOString()} was used.`;
+          }
+        }
       } else throw new Error('Pass url (a Figma frame link) or json (a saved Figma node JSON).');
       const root = pickNode(json, nodeId);
       const plan = planFigma(root, args.scale ?? 1);
-      if (plan.imageRefs.length) {
+      if (cachedNote) plan.notes.unshift(cachedNote);
+      if (args.images) {
+        for (const spec of plan.layers) {
+          const id = spec.id.replace(/#bg$/, '');
+          if (spec.image && args.images[id]) spec.image.file = path.resolve(expandHome(args.images[id]));
+        }
+      }
+      if (plan.imageRefs.some((id) => !args.images?.[id.replace(/#bg$/, '')])) {
         if (fileKey && token) {
           const dir = path.resolve(expandHome(args.imagesDir ?? path.join(ctx.bridge.paths.root, 'figma', fileKey)));
           fs.mkdirSync(dir, { recursive: true });
@@ -360,7 +517,7 @@ export function registerFigmaTools(server: McpServer): void {
       }
       const built = (await ctx.run(
         'buildFigma',
-        { comp: args.comp, frame: plan.frame, layers: plan.layers, frameRate: args.frameRate ?? 30, duration: args.duration ?? 10 },
+        { comp: args.comp, frame: plan.frame, name: plan.rootName, layers: plan.layers, frameRate: args.frameRate ?? 30, duration: args.duration ?? 10 },
         'render'
       )) as Record<string, any>;
       const notes = [...plan.notes, ...(built.notes ?? [])];
@@ -373,13 +530,13 @@ export function registerFigmaTools(server: McpServer): void {
           const s = spec.shadows[0];
           const distance = Math.round(Math.hypot(s.dx, s.dy) * 10) / 10;
           const angle = distance ? Math.round(((Math.atan2(s.dy, -s.dx) * 180) / Math.PI) * 10) / 10 : 90;
-          const r = await invokeTool('add-layer-style', { comp: { id: compRef.id }, layer: { id: item.layer.id }, kind: 'drop-shadow', settings: { color: [s.color[0], s.color[1], s.color[2]], opacity: Math.round(s.color[3] * 1000) / 10, distance, angle, size: Math.round(s.radius), useGlobalLight: false } });
+          const r = await invokeTool('add-layer-style', { comp: { id: item.comp ?? compRef.id }, layer: { id: item.layer.id }, kind: 'drop-shadow', settings: { color: [s.color[0], s.color[1], s.color[2]], opacity: Math.round(s.color[3] * 1000) / 10, distance, angle, size: Math.round(s.radius), useGlobalLight: false } });
           if (r.isError) notes.push(`${spec.path}: drop shadow not added: ${String((r.content[0] as any)?.text ?? '').slice(0, 160)}`);
           else shadowsAdded++;
           if (spec.shadows.length > 1) notes.push(`${spec.path}: ${spec.shadows.length} shadows in Figma; the first one was added.`);
         }
         if (spec.backgroundBlur) {
-          const r = await invokeTool('apply-look', { comp: { id: compRef.id }, look: 'frosted-glass', layer: { id: item.layer.id }, intensity: Math.max(0.1, spec.backgroundBlur / 30) });
+          const r = await invokeTool('apply-look', { comp: { id: item.comp ?? compRef.id }, look: 'frosted-glass', layer: { id: item.layer.id }, intensity: Math.max(0.1, spec.backgroundBlur / 30) });
           if (r.isError) notes.push(`${spec.path}: background blur not added.`);
         }
       }

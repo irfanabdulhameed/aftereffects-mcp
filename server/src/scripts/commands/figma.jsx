@@ -19,6 +19,11 @@ MCP.figma.group = function (layer, name) {
     return g.propertyIndex;
 };
 
+/** The first group in a shape layer's contents draws on top: strokes go there, so a fill never covers an inside stroke. */
+MCP.figma.toTop = function (layer, gi) {
+    layer.property("ADBE Root Vectors Group").property(gi).moveTo(1);
+};
+
 MCP.figma.items = function (layer, gi) {
     return layer.property("ADBE Root Vectors Group").property(gi).property("ADBE Vectors Group");
 };
@@ -128,6 +133,7 @@ MCP.figma.shape = function (comp, s, notes) {
             var si = MCP.figma.group(layer, "Stroke");
             MCP.figma.addPaths(layer, si, s.strokePaths);
             MCP.figma.addFill(layer, si, MCP.figma.rgba(stroke.color), "non-zero");
+            MCP.figma.toTop(layer, si);
         }
     } else {
         if (fill || s.kind === "image") {
@@ -135,12 +141,26 @@ MCP.figma.shape = function (comp, s, notes) {
             MCP.figma.addRect(layer, fi, s.w, s.h, s.radius, ellipse);
             MCP.figma.addFill(layer, fi, fill || [0.5, 0.5, 0.5, 1], null);
         }
-        if (stroke) {
+        if (stroke && stroke.sides) {
+            // Per-side strokes (a bottom rule under a row): one thin filled bar per side, inside the box.
+            var sd = stroke.sides, sc = MCP.figma.rgba(stroke.color);
+            var bars = [["Top", sd.top, s.w, sd.top, 0, -s.h / 2 + sd.top / 2], ["Bottom", sd.bottom, s.w, sd.bottom, 0, s.h / 2 - sd.bottom / 2],
+                        ["Left", sd.left, sd.left, s.h, -s.w / 2 + sd.left / 2, 0], ["Right", sd.right, sd.right, s.h, s.w / 2 - sd.right / 2, 0]];
+            for (var b = 0; b < bars.length; b++) {
+                if (!(bars[b][1] > 0)) { continue; }
+                var bi = MCP.figma.group(layer, "Stroke " + bars[b][0]);
+                MCP.figma.addRect(layer, bi, bars[b][2], bars[b][3], 0, false);
+                MCP.figma.items(layer, bi).property(1).property("ADBE Vector Rect Position").setValue([bars[b][4], bars[b][5]]);
+                MCP.figma.addFill(layer, bi, sc, null);
+                MCP.figma.toTop(layer, bi);
+            }
+        } else if (stroke) {
             // After Effects centres strokes: draw inside and outside strokes on a resized copy of the shape.
             var d = stroke.align === "inside" ? -stroke.width : (stroke.align === "outside" ? stroke.width : 0);
             var ki = MCP.figma.group(layer, "Stroke");
             MCP.figma.addRect(layer, ki, s.w + d, s.h + d, (s.radius || 0) + d / 2, ellipse);
             MCP.figma.addStroke(layer, ki, MCP.figma.rgba(stroke.color), stroke.width);
+            MCP.figma.toTop(layer, ki);
         }
     }
     MCP.figma.place(layer, s);
@@ -203,6 +223,7 @@ MCP.figma.image = function (comp, s, notes) {
     }
     var f = new File(s.image.file);
     var item = app.project.importFile(new ImportOptions(f));
+    if (MCP.figma.imagesFolder) { try { item.parentFolder = MCP.figma.imagesFolder; } catch (eF) {} }
     var layer = comp.layers.add(item);
     layer.name = s.name;
     var tg = layer.property("ADBE Transform Group");
@@ -211,52 +232,105 @@ MCP.figma.image = function (comp, s, notes) {
     return layer;
 };
 
+MCP.figma.LABELS = { comp: 8, text: 2, shape: 9, overlay: 5, image: 6 };
+
 MCP.register("buildFigma", function (args) {
     var frame = MCP.requireArg(args, "frame");
     var specs = MCP.requireArg(args, "layers");
-    var comp;
-    var created = false;
-    if (MCP.isDefined(args.comp)) { comp = MCP.resolveComp(args.comp); }
+    var fps = MCP.num(args.frameRate, 30), dur = MCP.num(args.duration, 10);
+    var root, created = false;
+    var rootName = String(MCP.arg(args, "name", frame.name));
+    if (MCP.isDefined(args.comp)) { root = MCP.resolveComp(args.comp); }
     else {
-        var w = Math.max(4, Math.round(frame.width)), h = Math.max(4, Math.round(frame.height));
-        comp = app.project.items.addComp(String(frame.name), w, h, 1, MCP.num(args.duration, 10), MCP.num(args.frameRate, 30));
+        root = app.project.items.addComp(rootName, Math.max(4, Math.round(frame.width)), Math.max(4, Math.round(frame.height)), 1, dur, fps);
         created = true;
-        if (frame.background) { comp.bgColor = [frame.background[0], frame.background[1], frame.background[2]]; }
-        else { comp.bgColor = [1, 1, 1]; }
+        root.bgColor = frame.background ? [frame.background[0], frame.background[1], frame.background[2]] : [1, 1, 1];
     }
     var notes = [], made = [], failed = [], missing = {}, counts = {};
     if (created && !frame.background) { notes.push("The frame has no fill, so the comp background was set to white (the Figma canvas); it renders transparent."); }
-    if (created && frame.background) {
-        var bg = comp.layers.addSolid([frame.background[0], frame.background[1], frame.background[2]], frame.name + " background", comp.width, comp.height, 1, comp.duration);
-        bg.locked = false;
-        made.push({ figmaId: frame.id, layer: MCP.serialize.layerRef(bg), kind: "background" });
+    // Project folders: Figma · <frame> / Components, Images.
+    var folder = app.project.items.addFolder(/^Figma · /.test(rootName) ? rootName : "Figma · " + rootName);
+    var compsFolder = null;
+    if (created) { root.parentFolder = folder; }
+    MCP.figma.imagesFolder = null;
+    for (i = 0; i < specs.length; i++) { if (specs[i].kind === "image" && specs[i].image && specs[i].image.file) { MCP.figma.imagesFolder = app.project.items.addFolder("Images"); MCP.figma.imagesFolder.parentFolder = folder; break; } }
+    var comps = {}, origins = {};
+    comps["__root"] = root;
+    origins["__root"] = [0, 0];
+    var key = function (id) { return id === null || id === undefined ? "__root" : String(id); };
+    var i;
+    // Component comps are filed like the design: Components / <top-level part> / <its part> / <its part>, three levels at most.
+    var groupSpec = {}, subFolders = {};
+    for (i = 0; i < specs.length; i++) { if (specs[i].kind === "group") { groupSpec[specs[i].id] = specs[i]; } }
+    var folderFor = function (g) {
+        var chain = [], p = g.parent, guard = 0;
+        while (p !== null && p !== undefined && groupSpec[p] && guard++ < 50) { chain.unshift(String(groupSpec[p].name)); p = groupSpec[p].parent; }
+        var f = compsFolder, path = "";
+        for (var d = 0; d < chain.length && d < 3; d++) {
+            path += "/" + chain[d];
+            if (!subFolders[path]) { subFolders[path] = app.project.items.addFolder(chain[d]); subFolders[path].parentFolder = f; }
+            f = subFolders[path];
+        }
+        return f;
+    };
+    for (i = 0; i < specs.length; i++) {
+        var g = specs[i];
+        if (g.kind !== "group") { continue; }
+        if (!compsFolder) { compsFolder = app.project.items.addFolder("Components"); compsFolder.parentFolder = folder; }
+        var c = app.project.items.addComp(String(g.name), Math.max(4, Math.round(g.w)), Math.max(4, Math.round(g.h)), 1, dur, fps);
+        c.parentFolder = folderFor(g);
+        c.bgColor = root.bgColor;
+        comps[g.id] = c;
+        origins[g.id] = [g.x, g.y];
     }
-    for (var i = 0; i < specs.length; i++) {
+    if (created && frame.background) {
+        var bg = root.layers.addSolid([frame.background[0], frame.background[1], frame.background[2]], "Background", root.width, root.height, 1, root.duration);
+        bg.label = MCP.figma.LABELS.shape;
+        made.push({ figmaId: frame.id, comp: root.id, layer: MCP.serialize.layerRef(bg), kind: "background" });
+    }
+    for (i = 0; i < specs.length; i++) {
         var s = specs[i];
+        var target = comps[key(s.parent)];
+        var o = origins[key(s.parent)];
+        if (!target) { failed.push({ figmaId: s.id, name: s.path, error: "its group was not built" }); continue; }
+        // Coordinates arrive relative to the frame; move them into the comp that holds the layer.
+        var local = {};
+        for (var k in s) { if (s.hasOwnProperty(k)) { local[k] = s[k]; } }
+        local.x = s.x - o[0];
+        local.y = s.y - o[1];
         try {
             var L;
-            if (s.kind === "text") { L = MCP.figma.text(comp, s, notes, missing); }
-            else if (s.kind === "image") { L = MCP.figma.image(comp, s, notes); }
-            else { L = MCP.figma.shape(comp, s, notes); }
+            if (s.kind === "group") {
+                L = target.layers.add(comps[s.id]);
+                L.name = String(s.name);
+                MCP.figma.place(L, local);
+            } else if (s.kind === "text") { L = MCP.figma.text(target, local, notes, missing); }
+            else if (s.kind === "image") { L = MCP.figma.image(target, local, notes); }
+            else { L = MCP.figma.shape(target, local, notes); }
             L.comment = "figma " + s.id + " · " + s.path;
+            if (MCP.figma.LABELS[s.role]) { L.label = MCP.figma.LABELS[s.role]; }
             if (s.blur && s.blur > 0) {
                 var fx = L.property("ADBE Effect Parade").addProperty("ADBE Gaussian Blur 2");
                 L.property("ADBE Effect Parade").property(fx.propertyIndex).property("ADBE Gaussian Blur 2-0001").setValue(s.blur);
             }
             counts[s.kind] = (counts[s.kind] || 0) + 1;
-            made.push({ figmaId: s.id, layer: MCP.serialize.layerRef(L), kind: s.kind });
+            made.push({ figmaId: s.id, comp: target.id, layer: MCP.serialize.layerRef(L), kind: s.kind });
         } catch (e) {
             failed.push({ figmaId: s.id, name: s.path, error: e.message });
         }
     }
     var fonts = [];
-    for (var k in missing) { if (missing.hasOwnProperty(k)) { fonts.push(missing[k] + " (" + k + ")"); } }
+    for (var f in missing) { if (missing.hasOwnProperty(f)) { fonts.push(missing[f] + " (" + f + ")"); } }
     if (fonts.length) { notes.push("Fonts not installed here, so After Effects used a fallback: " + fonts.join(", ") + ". Install them and set the font again (relink-fonts)."); }
+    var compList = [];
+    for (var id in comps) { if (comps.hasOwnProperty(id) && id !== "__root") { compList.push(MCP.serialize.compRef(comps[id])); } }
     return {
-        composition: MCP.serialize.compRef(comp),
+        composition: MCP.serialize.compRef(root),
         created: created,
-        width: comp.width,
-        height: comp.height,
+        width: root.width,
+        height: root.height,
+        folder: folder.name,
+        components: compList,
         counts: counts,
         layerCount: made.length,
         made: made,

@@ -7896,6 +7896,8 @@ Pack: figma. Changes the project (one undo step). Runs on the server; not availa
 | `frameRate` | number | no | New comp frame rate. Default 30. |
 | `duration` | number | no | New comp duration in seconds. Default 10. |
 | `imagesDir` | string | no | Folder for image fills downloaded from Figma. |
+| `images` | object of string | no | Image files by Figma node id, for image fills exported without the API (for example from a Figma plugin). |
+| `refresh` | boolean | no | Fetch the frame from Figma again. Default true; false reuses the copy kept from the last import. |
 
 Example call:
 

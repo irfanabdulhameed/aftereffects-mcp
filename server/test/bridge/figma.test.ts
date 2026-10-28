@@ -18,7 +18,7 @@ describe('import-figma', () => {
     const before = tb.mock.state.commandsRun;
     const r = await callTool(client, 'import-figma', { json: fixture, scale: 4 / 3 });
     expect(r.isError, r.text).toBe(false);
-    expect(r.json).toMatchObject({ width: 1920, height: 1200, shadowsAdded: 1, layerCount: 16 });
+    expect(r.json).toMatchObject({ width: 1920, height: 1200, shadowsAdded: 1, layerCount: 18 });
     expect(tb.mock.state.log.slice(before).map((l: { command: string }) => l.command)).toEqual(['buildFigma', 'addLayerStyle', 'applyLook']);
   });
 

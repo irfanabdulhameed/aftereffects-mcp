@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.6.2 (2026-10-28)
+
+import-figma builds an organised project instead of one flat comp:
+
+- Every Figma frame or instance with content is its own comp, nested like the design (a frame's clipping comes with its comp); layout-only wrappers are skipped.
+- Readable names: cards and panels after their heading, rows after their parts, Title, Description, Value, Icon, Background, Edge fade left and right instead of auto names; colour labels for comps, text, shapes and overlays.
+- Project folders mirror the page (Figma · <frame> / Components / <part> / …, Images).
+- Per-side strokes (a rule under a table row) and inside strokes drawn above their fill; image fills can come from local files (`images`), so a frame exported from the Figma app needs no API; fetched frames are cached and a rate-limited API falls back to the cache.
+
 ## 2.6.1 (2026-10-28)
 
 - import-figma rebuilds linear and radial gradient fills (fades to transparent included) with Gradient Ramp, kept inside the shape and following the layer, instead of drawing their first colour; a frame without a fill gets a white comp background like the Figma canvas.

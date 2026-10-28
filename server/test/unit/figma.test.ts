@@ -14,14 +14,31 @@ describe('Figma links', () => {
   });
 });
 
+describe('naming', () => {
+  it('names auto-named layers by role and cards by their title', () => {
+    const frame = { id: '1', name: 'Frame 12', type: 'FRAME', absoluteBoundingBox: { x: 0, y: 0, width: 800, height: 900 }, children: [
+      { id: '2', name: 'Frame 13', type: 'FRAME', absoluteBoundingBox: { x: 0, y: 0, width: 380, height: 300 }, fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }], children: [
+        { id: '3', name: 'Vector', type: 'VECTOR', absoluteBoundingBox: { x: 20, y: 20, width: 24, height: 24 }, size: { x: 24, y: 24 }, fills: [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }], fillGeometry: [{ path: 'M0 0L24 0L24 24Z' }] },
+        { id: '4', name: 'Live Online', type: 'TEXT', characters: 'Live Online', absoluteBoundingBox: { x: 20, y: 60, width: 200, height: 30 }, style: { fontSize: 24 } },
+        { id: '5', name: 'Deliver live classes.', type: 'TEXT', characters: 'Deliver live classes.', absoluteBoundingBox: { x: 20, y: 100, width: 300, height: 40 }, style: { fontSize: 14 } } ] },
+      { id: '6', name: 'Rectangle 9', type: 'RECTANGLE', absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 300 }, size: { x: 100, y: 300 },
+        fills: [{ type: 'GRADIENT_LINEAR', gradientHandlePositions: [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }, { x: 0, y: 1 }], gradientStops: [{ position: 0, color: { r: 1, g: 1, b: 1, a: 1 } }, { position: 1, color: { r: 1, g: 1, b: 1, a: 0 } }] }] } ] };
+    const p = planFigma(frame, 1);
+    expect(p.layers.map((l) => `${l.parent ?? 'root'}:${l.name}`)).toEqual(['root:Card · Live Online', '2:Background', '2:Icon', '2:Title', '2:Description', 'root:Edge fade left']);
+    expect(p.rootName).toBe('Figma · Card · Live Online');
+  });
+});
+
 describe('planFigma', () => {
   const plan = planFigma(pickNode(fixture, '1:2'), 1);
-  const by = (name: string) => plan.layers.find((l) => l.path.endsWith(name))!;
+  const by = (name: string) => plan.layers.find((l) => l.path.endsWith(name) && l.kind !== 'group' && l.name !== 'Background') ?? plan.layers.find((l) => l.path.endsWith(name))!;
 
   it('flattens the frame bottom to top, relative to the frame, skipping hidden nodes', () => {
     expect(plan.frame).toMatchObject({ name: 'Pricing card', width: 1440, height: 900 });
     expect(plan.frame.background?.[0]).toBeCloseTo(0.961, 2);
-    expect(plan.layers.map((l) => l.name)).toEqual(['Glow', 'Card', 'Header band', 'Plan', 'Badge dot', 'Price', 'Description', 'Check', 'Label', 'Check', 'Label', 'Check', 'Label', 'Button', 'Label', 'Blur panel']);
+    expect(plan.layers.map((l) => l.name)).toEqual(['Glow', 'Card', 'Header band', 'Plan', 'Badge dot', 'Price', 'Description', 'Check', 'Label', 'Check 2', 'Label 2', 'Check 3', 'Label 3', 'Button', 'Background', 'Label', 'Blur panel', 'Background']);
+    expect(plan.layers.filter((l) => l.kind === 'group').map((l) => l.name)).toEqual(['Button', 'Blur panel']);
+    expect(plan.layers.find((l) => l.path === 'Button / Label')?.parent).toBe('2:9');
     expect(by('Card')).toMatchObject({ kind: 'rect', x: 420, y: 150, w: 600, h: 600, radius: 24, stroke: { width: 1, align: 'inside' } });
     expect(plan.layers.some((l) => l.name === 'Old badge')).toBe(false);
   });
@@ -43,7 +60,7 @@ describe('planFigma', () => {
   it('keeps effects for the builder', () => {
     expect(by('Glow').blur).toBe(60);
     expect(by('Card').shadows?.[0]).toMatchObject({ dx: 0, dy: 8, radius: 24 });
-    expect(by('Blur panel').backgroundBlur).toBe(30);
+    expect(plan.layers.find((l) => l.kind === 'group' && l.name === 'Blur panel')?.backgroundBlur).toBe(30);
   });
 
   it('scales every size and position', () => {
