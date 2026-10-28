@@ -6,10 +6,12 @@
  * with settings "<prefix>/<name>" (for example "dropShadow/opacity"). A style
  * that was never added to a layer is a hidden group: canSetEnabled is false
  * and addProperty cannot create it. Such a style is first tried through its
- * enabled flag, and when After Effects refuses, it is added with the Layer >
- * Layer Styles menu command (fixed ids 9000 to 9008; the names are ambiguous
- * because the Effect menu has items with the same names). That needs the comp
- * in the viewer and the layer selected; both are restored afterwards.
+ * enabled flag, then through a generated animation preset that holds only that
+ * style (Layer.applyPreset works on the selected layers without the viewer, so
+ * After Effects stays in the background). Only when that fails is it added
+ * with the Layer > Layer Styles menu command (fixed ids 9000 to 9008; the
+ * names are ambiguous because the Effect menu has items with the same names),
+ * which needs the comp in the viewer and brings After Effects to the front.
  *
  * Layer-style gradient colours are custom values that scripts can neither read
  * nor write, so gradient-overlay colours are drawn by a Gradient Ramp effect.
@@ -294,6 +296,84 @@ MCP.styles.enableByProperty = function (layer, kind) {
     return MCP.styles.isOn(layer, kind);
 };
 
+/* ------------------------------------------------------------ preset route */
+
+/**
+ * The bytes of an animation preset (.ffx) that adds one style with its default
+ * settings. A preset is a big-endian RIFX file: a header, then the path of
+ * match names to the saved property ("ADBE Layer Styles" > "<prefix>/enabled")
+ * and the property itself, stored as in a project file. There a style that was
+ * added is a group flagged 1 and only settings changed from their defaults are
+ * written, so an empty group adds the style with its defaults.
+ */
+MCP.styles.presetBytes = function (prefix) {
+    function u32(v) { return String.fromCharCode((v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255); }
+    function chunk(id, body) { return id + u32(body.length) + body + (body.length & 1 ? "\u0000" : ""); }
+    function list(type, body) { return chunk("LIST", type + body); }
+    function hex(h) { var s = ""; for (var i = 0; i < h.length; i += 2) { s += String.fromCharCode(parseInt(h.substr(i, 2), 16)); } return s; }
+    function matchName(n) { var s = n; while (s.length < 40) { s += "\u0000"; } return chunk("tdmn", s); }
+    function path(names) {
+        var body = chunk("tdot", u32(0xFFFFFFFF)) + chunk("tdpl", u32(names.length));
+        for (var i = 0; i < names.length; i++) { body += list("tdsi", chunk("tdix", u32(0xFFFFFFFF)) + matchName(names[i])); }
+        return list("tdsp", body);
+    }
+    var defaultName = chunk("tdsn", chunk("Utf8", "-_0_/-"));
+    var style = list("tdgp", chunk("tdsb", u32(1)) + defaultName + matchName("ADBE Group End"));
+    var head = chunk("head", hex("000000030000005f0000000101020000"));
+    var beso = chunk("beso", hex("00000001000000010000000000005da8001df8520000000300010001078004383ff00000000000003ff000000000000000000000ffffffff"));
+    var body = beso + path([MCP.styles.ROOT, prefix + "/enabled"]) + defaultName + path(["ADBE End of path sentinel"]) + style;
+    return chunk("RIFX", "FaFX" + head + list("besc", body));
+};
+
+/** Writes the preset for a kind once into <bridge>/presets/layer-styles and returns the File. */
+MCP.styles.presetFile = function (kind) {
+    var prefix = MCP.styles.kindInfo(kind).prefix;
+    var bytes = MCP.styles.presetBytes(prefix);
+    var folder = new Folder(MCP.bridgeRoot() + "/presets/layer-styles");
+    if (!folder.exists) { folder.create(); }
+    var file = new File(folder.fsName + "/" + prefix + ".ffx");
+    if (file.exists && file.length === bytes.length) { return file; }
+    file.encoding = "BINARY";
+    if (!file.open("w")) { MCP.fail("Could not write the layer style preset " + file.fsName, "io"); }
+    file.write(bytes);
+    file.close();
+    return file;
+};
+
+/**
+ * Adds the style to several layers of one comp by applying the generated
+ * preset to exactly those layers, then restores the selection and locks. The
+ * comp is not opened in the viewer, so After Effects stays in the background.
+ */
+MCP.styles.addByPreset = function (comp, layers, kind) {
+    var prevSel = [], unlocked = [], i;
+    for (i = 1; i <= comp.numLayers; i++) {
+        if (_mcpTry(function () { return comp.layer(i).selected; }, false)) { prevSel.push(comp.layer(i)); }
+    }
+    var errorText = null, file = null;
+    var ids = {};
+    for (i = 1; i <= comp.numLayers; i++) { ids[comp.layer(i).id] = true; }
+    try {
+        file = MCP.styles.presetFile(kind);
+        for (i = 0; i < layers.length; i++) {
+            if (layers[i].locked) { layers[i].locked = false; unlocked.push(layers[i]); }
+        }
+        for (i = 1; i <= comp.numLayers; i++) { try { comp.layer(i).selected = false; } catch (e1) {} }
+        for (i = 0; i < layers.length; i++) { layers[i].selected = true; }
+        layers[0].applyPreset(file);
+    } catch (e2) {
+        errorText = e2.toString();
+    }
+    // With nothing selected applyPreset makes a new solid instead; remove any such layer.
+    for (i = comp.numLayers; i >= 1; i--) {
+        if (!ids[comp.layer(i).id]) { try { comp.layer(i).remove(); } catch (e6) {} }
+    }
+    for (i = 1; i <= comp.numLayers; i++) { try { comp.layer(i).selected = false; } catch (e3) {} }
+    for (i = 0; i < prevSel.length; i++) { try { prevSel[i].selected = true; } catch (e4) {} }
+    for (i = 0; i < unlocked.length; i++) { try { unlocked[i].locked = true; } catch (e5) {} }
+    return { preset: file ? file.fsName : null, error: errorText };
+};
+
 /**
  * Adds the style to several layers of one comp with the Layer Styles menu
  * command: opens the comp in the viewer, selects exactly those layers, runs
@@ -562,7 +642,23 @@ MCP.styles.addToLayers = function (comp, layers, kind, settings, opts) {
             st.status = "error"; st.error = (e1 && e1.message) ? e1.message : String(e1); st.code = (e1 && e1.mcpCode) ? e1.mcpCode : "script-error";
         }
     }
-    var menu = null;
+    var menu = null, preset = null;
+    if (menuQueue.length) {
+        var viaPreset = [];
+        for (i = 0; i < menuQueue.length; i++) { viaPreset.push(menuQueue[i].layer); }
+        preset = MCP.styles.addByPreset(comp, viaPreset, kind);
+        var left = [];
+        for (i = 0; i < menuQueue.length; i++) {
+            st = menuQueue[i];
+            if (MCP.styles.isPresent(st.layer, kind)) {
+                if (!MCP.styles.isOn(st.layer, kind)) { try { MCP.styles.group(st.layer, kind).enabled = true; } catch (e5) {} }
+                st.method = "preset"; st.added = true;
+            } else {
+                left.push(st);
+            }
+        }
+        menuQueue = left;
+    }
     if (menuQueue.length) {
         if (o.allowMenu === false) {
             for (i = 0; i < menuQueue.length; i++) {
@@ -620,7 +716,7 @@ MCP.styles.addToLayers = function (comp, layers, kind, settings, opts) {
             results.push({ status: "error", layer: MCP.serialize.layerRef(st.layer), error: (e4 && e4.message) ? e4.message : String(e4), code: (e4 && e4.mcpCode) ? e4.mcpCode : "script-error" });
         }
     }
-    return { results: results, menu: menu };
+    return { results: results, menu: menu, preset: preset };
 };
 
 MCP.styles.layersFromArgs = function (comp, args) {
@@ -651,7 +747,7 @@ MCP.register("addLayerStyle", function (args) {
         allowMenu: MCP.bool(args.allowMenuCommand, true),
         fillOpacity: args.fillOpacity
     });
-    return MCP.styles.bulkResult(comp, args, res.results, { kind: kind, menuCommand: res.menu });
+    return MCP.styles.bulkResult(comp, args, res.results, { kind: kind, preset: res.preset, menuCommand: res.menu });
 }, { mutating: true });
 
 MCP.register("setLayerStyle", function (args) {

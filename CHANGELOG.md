@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.6.4 (2026-10-28)
+
+Layer styles no longer bring After Effects to the front:
+
+- add-layer-style (and every tool that adds a shadow, glow or stroke as a layer style, such as import-figma) adds a new style from a small generated animation preset applied to the selected layers, without opening the comp in the viewer, so After Effects stays in the background while you work in other apps. The presets are written once into the bridge folder (presets/layer-styles).
+- The Layer Styles menu command, which opens the viewer and pulls After Effects forward, is now only a fallback when the preset does not add the style. Results report the method "preset".
+
 ## 2.6.3 (2026-10-28)
 
 import-figma matches the design more closely (checked against Figma's own render: under 1 % of pixels differ on a dashboard page):

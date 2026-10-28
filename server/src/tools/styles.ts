@@ -158,7 +158,7 @@ export function registerStyleTools(server: McpServer): void {
       'Use when: a card, button or title needs a shadow, glow, bevel, overlay or outline. Do not use for: the Drop Shadow or Glow effects (apply-effect-template) or changing a style that is on (set-layer-style). ' +
       'Inputs: layer or layers; kind; settings (color, opacity, blendMode, angle, distance, spread, size, noise and kind-specific fields); fillOpacity; useDefaults; allowMenuCommand (default true). ' +
       'Returns: count, failed, and per layer the settings read back, whether it was added now, and the method. ' +
-      'Notes: idempotent; a style already on only gets the given settings. New styles start from designed defaults: drop-shadow black 12 %, angle 90, distance 6, size 24; inner-shadow 10 %, distance 2, size 6; outer-glow white 35 %, size 30; stroke 1 px black 10 % inside. A style new to a layer may need the Layer Styles menu command, which opens the comp in the viewer and selects the layer briefly; both are restored. Gradient colours are drawn by a Gradient Ramp effect. Undoable in one step. ' +
+      'Notes: idempotent; a style already on only gets the given settings. New styles start from designed defaults: drop-shadow black 12 %, angle 90, distance 6, size 24; inner-shadow 10 %, distance 2, size 6; outer-glow white 35 %, size 30; stroke 1 px black 10 % inside. A style new to a layer is added from a small generated animation preset, so After Effects stays in the background; only if that fails is the Layer Styles menu command used, which opens the comp in the viewer, brings After Effects to the front and selects the layer briefly (both restored). Gradient colours are drawn by a Gradient Ramp effect. Undoable in one step. ' +
       'Example: layer {name: "Card"}, kind "drop-shadow", settings {opacity: 14, size: 30}.',
     input: {
       comp: CompRef.optional(),
@@ -168,7 +168,7 @@ export function registerStyleTools(server: McpServer): void {
       settings: StyleSettings.optional(),
       fillOpacity: z.number().min(0).max(100).optional().describe('Blending Options > Fill Opacity in percent. 0 hides the layer\'s own pixels and keeps its styles (outline-only text with a Stroke).'),
       useDefaults: z.boolean().optional().describe('Apply the designed defaults under the given settings. Default true when the style is added now, false when it was already on.'),
-      allowMenuCommand: z.boolean().optional().describe('Allow the Layer Styles menu command (viewer and selection) when the style cannot be turned on through its property. Default true; false fails instead.'),
+      allowMenuCommand: z.boolean().optional().describe('Allow the Layer Styles menu command (viewer and selection; brings After Effects to the front) when neither the property nor the generated preset can turn the style on. Default true; false fails instead.'),
     },
     toBridgeArgs: (args) => {
       requireLayerTarget(args);
