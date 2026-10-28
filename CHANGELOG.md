@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.0 (2026-10-28)
+
+A component library that works from a synced folder, and Live View. 267 tools, 62 of them in the core.
+
+- `save-to-library` saves a composition and everything it uses as its own project in the library (`<Category>/<Name>/<Name>.aep`), copies its footage beside it, takes a poster frame and updates `library.json` and the README parts table. The open project is imported into a new project and reduced, so the original file is never written.
+- `remove-from-library` deletes a part and its entry.
+- Libraries in OneDrive, iCloud Drive or Dropbox can stay online-only. `library.json` entries are used as written (a part's `component.json` is only read for parts the index does not list), `insert-library-component` downloads a part and its footage before After Effects opens it and reports what it downloaded, transient sync errors are retried, and an index that is slow to download falls back to the server's last copy instead of hanging. `library.json` and `README.md` are written in place, so "Always Keep on This Device" stays set. New setting `AE_MCP_LIBRARY_WAIT_MS` (default 20000).
+- Live View (macOS): a native plug-in (`native/live-view`) keeps the active composition's current frame in the bridge folder. `see-live` (core) returns it without a script or a render; it waits for a picture drawn after the last change made through the server and says when none came. `live-view-settings` switches it and sets its size and budget. The bridge panel shows a Live row.
+
 ## 2.4.0 (2026-10-28)
 
 A smaller tool list for every client.

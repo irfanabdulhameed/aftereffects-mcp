@@ -194,6 +194,8 @@ The helper never activates After Effects and never moves the mouse. `dismiss-ae-
 | `AE_MCP_ALLOW_RAW_SCRIPT` | unset | `1` enables `run-extendscript` |
 | `AE_MCP_STYLE_FILE` | unset | Path to a JSON or YAML style file |
 | `AE_MCP_TOOLS` | `core` | Tools listed at start: `core`, `all`, or core plus a comma list of packs |
+| `AE_MCP_LIBRARY_DIR` | unset | Component library folder (one subfolder per part, `library.json` index) |
+| `AE_MCP_LIBRARY_WAIT_MS` | `20000` | Wait for an online-only `library.json` before using the server's last copy (kept in `<bridge>/library-cache/`) |
 | `AE_MCP_GUARD` | on (macOS) | `0` turns the AE guard off (no lock, no fail-fast checks, no guard tools) |
 | `AE_MCP_OWNER` | `MCP server <pid>` | Name written into `driver.lock`, shown to other drivers and in the panel |
 | `AE_MCP_ALLOW_DIALOG_DISMISS` | unset | `1` enables `dismiss-ae-dialog` and automatic closing of plain message boxes; `0` forces it off. Without it, `guard-options.json` in the bridge folder decides |

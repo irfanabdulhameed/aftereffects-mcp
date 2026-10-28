@@ -5,7 +5,7 @@ description: Drive Adobe After Effects through the AfterEffectsMCP server. Use w
 
 # After Effects MCP
 
-The `AfterEffectsMCP` server exposes about 260 tools (61 core tools always on, the rest in packs) that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
+The `AfterEffectsMCP` server exposes about 270 tools (62 core tools always on, the rest in packs) that build and edit inside a running After Effects through a file bridge. A panel inside After Effects (Window > mcp-bridge-auto.jsx) executes them.
 
 ## Before anything
 
@@ -18,7 +18,7 @@ The `AfterEffectsMCP` server exposes about 260 tools (61 core tools always on, t
 2. `list-layers` on the target composition; `get-composition-info` for frame rate and size.
 3. Plan every step and name every layer you will create.
 4. Build with one `batch` (steps of tool name plus args) so it is one round-trip and one undo.
-5. `see-frame` at two or three times and look at the image.
+5. `see-frame` at two or three times and look at the image. For a quick look at the active comp after a change, `see-live` (Live View plug-in) costs After Effects nothing.
 6. `audit-composition` before showing the work: fix every error it reports (frame-by-frame keys, loose layers, broken expressions, missing fonts or footage).
 7. Fix, `see-frame` again, then `save-version` or `save-project` if asked.
 
@@ -49,7 +49,9 @@ Seconds in `time`, integer `frame` wins when both are given. Pixels with origin 
 
 ## Components
 
-Every repeated UI object is one component: `create-component` precomposes it and exposes its controls as Essential Properties, `set-component-values` changes one copy, `add-component-instances` places many, `set-responsive-time` keeps intros and outros at speed when a copy is stretched. `list-library-components` and `insert-library-component` reuse saved components; `export-component-template` writes a .mogrt.
+Every repeated UI object is one component: `create-component` precomposes it and exposes its controls as Essential Properties, `set-component-values` changes one copy, `add-component-instances` places many, `set-responsive-time` keeps intros and outros at speed when a copy is stretched. `export-component-template` writes a .mogrt.
+
+Reuse before you build: when a component library is set up (`AE_MCP_LIBRARY_DIR`), `list-library-components` lists its parts with their controls and `insert-library-component` places one and sets its controls; a part kept online-only in OneDrive or iCloud is downloaded first. Save a finished, reusable component with `save-to-library` (category, one-sentence description, tags); `remove-from-library` drops one.
 
 ## Styles, text, vectors, 3D
 

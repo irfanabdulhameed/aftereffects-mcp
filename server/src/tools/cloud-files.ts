@@ -9,6 +9,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CHUNK = 1 << 20;
+const RETRY_MS = 2000;
+
+/** Sync clients sometimes answer a read of an online-only file with ETIMEDOUT at once instead of waiting; those reads are retried. */
+function isTransient(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException)?.code;
+  return code === 'ETIMEDOUT' || code === 'EAGAIN' || code === 'EINTR' || code === 'EDEADLK';
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
 
 /** false for an online-only placeholder, true for a file on disk, null when the platform cannot tell (Windows) or the file is missing. */
 export function isLocalFile(file: string): boolean | null {
@@ -87,14 +98,22 @@ async function readThrough(file: string, deadline: number): Promise<number> {
   return total;
 }
 
-/** Reads every online-only file through so it is on disk before After Effects opens it. */
+/** Reads every online-only file through so it is on disk before After Effects opens it. Transient sync errors are retried until the deadline. */
 export async function ensureLocal(files: string[], timeoutMs = 300000): Promise<DownloadReport> {
   const started = Date.now();
   const deadline = started + timeoutMs;
   const report: DownloadReport = { downloaded: [], bytes: 0, seconds: 0 };
   for (const f of files) {
     if (isLocalFile(f) !== false) continue;
-    report.bytes += await readThrough(f, deadline);
+    for (;;) {
+      try {
+        report.bytes += await readThrough(f, deadline);
+        break;
+      } catch (err) {
+        if (!isTransient(err) || Date.now() + RETRY_MS > deadline) throw err;
+        await new Promise((r) => setTimeout(r, RETRY_MS));
+      }
+    }
     report.downloaded.push(f);
   }
   report.seconds = Math.round((Date.now() - started) / 10) / 100;
@@ -102,22 +121,47 @@ export async function ensureLocal(files: string[], timeoutMs = 300000): Promise<
 }
 
 /** ensureLocal for synchronous callers (batch argument preparation). Blocks until the files are on disk. */
-export function ensureLocalSync(files: string[]): DownloadReport {
+export function ensureLocalSync(files: string[], timeoutMs = 300000): DownloadReport {
   const started = Date.now();
+  const deadline = started + timeoutMs;
   const report: DownloadReport = { downloaded: [], bytes: 0, seconds: 0 };
   for (const f of files) {
     if (isLocalFile(f) !== false) continue;
-    report.bytes += readThroughSync(f);
+    for (;;) {
+      try {
+        report.bytes += readThroughSync(f);
+        break;
+      } catch (err) {
+        if (!isTransient(err) || Date.now() + RETRY_MS > deadline) throw err;
+        sleepSync(RETRY_MS);
+      }
+    }
     report.downloaded.push(f);
   }
   report.seconds = Math.round((Date.now() - started) / 10) / 100;
   return report;
 }
 
-/** Writes a file in place (same file, not a replacement), so a sync client keeps settings such as "Always Keep on This Device". */
+/** Writes a file in place (same file, not a replacement), so a sync client keeps settings such as "Always Keep on This Device". Transient sync errors are retried for up to a minute. */
 export function writeInPlace(file: string, text: string): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text, { flag: 'w' });
+  const deadline = Date.now() + 60000;
+  for (;;) {
+    try {
+      fs.writeFileSync(file, text, { flag: 'w' });
+      return;
+    } catch (err) {
+      if (!isTransient(err) || Date.now() + RETRY_MS > deadline) throw err;
+      sleepSync(RETRY_MS);
+    }
+  }
+}
+
+/** Replaces a file with new content as a new file, so an online-only old copy is never downloaded first. */
+export function replaceFile(file: string, data: Buffer | string): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.rmSync(file, { force: true });
+  fs.writeFileSync(file, data);
 }
 
 /** Reads a text file, waiting at most waitMs when it is online-only. Resolves null when the download takes longer. */

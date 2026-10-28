@@ -45,6 +45,26 @@ describe('liveState', () => {
   });
 });
 
+describe('see-live after a change', () => {
+  it('waits for a picture drawn after the last change, and says so when none comes', async () => {
+    writeLive({ status: { enabled: true }, meta: META, image: true });
+    const old = (Date.now() - 60000) / 1000;
+    fs.utimesSync(livePaths(tb.dir).image, old, old);
+    await callTool(client, 'rename-layer', { layer: { index: 1 }, newName: 'Title' });
+    const stale = await callTool(client, 'see-live', { waitMs: 200 });
+    const staleInfo = JSON.parse(stale.raw.content.find((c) => c.type === 'text')?.text ?? '{}');
+    expect(staleInfo.afterLastChange).toBe(false);
+    expect(staleInfo.note).toMatch(/older than the last change/);
+    setTimeout(() => fs.writeFileSync(livePaths(tb.dir).image, FAKE_JPEG), 150);
+    const t0 = Date.now();
+    const fresh = await callTool(client, 'see-live', { waitMs: 3000 });
+    const freshInfo = JSON.parse(fresh.raw.content.find((c) => c.type === 'text')?.text ?? '{}');
+    expect(freshInfo.afterLastChange).toBe(true);
+    expect(freshInfo.note).toBeUndefined();
+    expect(Date.now() - t0).toBeLessThan(2500);
+  });
+});
+
 describe('see-live', () => {
   it('explains how to install the plug-in when it is missing', async () => {
     const r = await callTool(client, 'see-live', {});

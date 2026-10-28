@@ -13,7 +13,7 @@ import * as path from 'path';
 import { z } from 'zod';
 import { scalePngBuffer } from '../render/png.js';
 import { CompRef } from '../schemas/common.js';
-import { readTextWithin, writeInPlace } from './cloud-files.js';
+import { readTextWithin, replaceFile, writeInPlace } from './cloud-files.js';
 import { expandHome, libraryWaitMs, readLibraryIndex, rememberIndex } from './components.js';
 import { defineTool, jsonResult } from './registry.js';
 import { waitForFrameFile } from './render.js';
@@ -301,7 +301,7 @@ export function registerLibraryTools(server: McpServer): void {
         try {
           const background = Array.isArray(probe.background) ? (probe.background as number[]) : undefined;
           poster = path.join(partDir, 'poster.png');
-          fs.writeFileSync(poster, scalePngBuffer(frame, undefined, POSTER_WIDTH, background).png);
+          replaceFile(poster, scalePngBuffer(frame, undefined, POSTER_WIDTH, background).png);
         } catch (err) {
           poster = null;
           notes.push(`The poster frame could not be read: ${(err as Error).message}`);

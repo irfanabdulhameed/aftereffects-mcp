@@ -183,6 +183,7 @@ export function defineTool<S extends z.ZodRawShape>(server: McpServer, def: Tool
   });
 
   const callback = async (rawArgs: z.objectOutputType<S, z.ZodTypeAny>): Promise<CallToolResult> => {
+    if (def.mutating !== false) lastChange = Date.now();
     const bridge = getBridge();
     const ctx: ToolContext = {
       bridge,
@@ -217,6 +218,13 @@ export function defineTool<S extends z.ZodRawShape>(server: McpServer, def: Tool
     callback as unknown as ToolCallback<S>
   );
   handles.set(def.name, { registered, callback: callback as unknown as (args: Record<string, unknown>) => Promise<CallToolResult> });
+}
+
+let lastChange = 0;
+
+/** When the last tool that can change the project was called (ms since the epoch, 0 if none yet). see-live waits for a picture newer than this. */
+export function lastChangeAt(): number {
+  return lastChange;
 }
 
 /** Names of every tool that goes through the bridge, mapped to their command. */

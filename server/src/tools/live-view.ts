@@ -12,7 +12,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { z } from 'zod';
-import { defineTool, jsonResult } from './registry.js';
+import { defineTool, jsonResult, lastChangeAt } from './registry.js';
 
 /** status.json is rewritten every 2 s while AE is idle; older than this means AE is busy, closed or the plug-in missing. */
 const STATUS_STALE_MS = 10000;
@@ -77,8 +77,8 @@ export function registerLiveViewTools(server: McpServer): void {
     description:
       'Returns the current picture of the active composition as kept by the AE MCP Live View plug-in, the same frame the human sees at the playhead. It costs After Effects nothing: the plug-in draws the picture whenever the comp settles after a change, and this tool only reads the file. ' +
       'Use when: glancing at what the human is working on, checking the result of a change without moving the playhead, or watching the comp while another script runs. Do not use for: a specific time other than the playhead, or exact full-resolution checks (see-frame). ' +
-      'Inputs: waitMs (default 1500) waits up to this long for the full-size picture when only the quick small one is ready; includeInfo (default true). ' +
-      'Returns: a JPEG image content block plus text with comp, time, frame, size, scale, final (false = only the quick picture), renderMs and ageSeconds. ' +
+      'Inputs: waitMs (default 1500) waits up to this long for a picture drawn after the last change made through this server, and for the full-size picture when only the quick small one is ready; includeInfo (default true). ' +
+      'Returns: a JPEG image content block plus text with comp, time, frame, size, scale, final (false = only the quick picture), renderMs, ageSeconds and afterLastChange (false, with a note, when no newer picture came in time). ' +
       'Notes: needs the plug-in installed and enabled (live-view-settings). Pictures are half size by default. A frame whose full-size render would take longer than budgetMs stays at the quick size. ' +
       'Example: after a batch that restyles a title, see-live to confirm the look at the current time.',
     input: {
@@ -93,8 +93,16 @@ export function registerLiveViewTools(server: McpServer): void {
       if (st.state === 'off') return jsonResult({ error: 'Live view is switched off. Turn it on with live-view-settings { enabled: true }.', code: 'live-view-off' }, true);
 
       const deadline = Date.now() + (args.waitMs ?? 1500);
+      const changedAt = lastChangeAt();
+      const drawnAt = () => {
+        try {
+          return fs.statSync(p.image).mtimeMs;
+        } catch {
+          return 0;
+        }
+      };
       let meta = readJson(p.meta);
-      while (meta && meta.final === false && Date.now() < deadline) {
+      while (meta && (meta.final === false || drawnAt() < changedAt) && Date.now() < deadline) {
         await sleep(100);
         meta = readJson(p.meta) ?? meta;
       }
@@ -113,6 +121,10 @@ export function registerLiveViewTools(server: McpServer): void {
         final: meta.final !== false,
         renderMs: meta.renderMs,
         ageSeconds,
+        afterLastChange: drawnAt() >= changedAt,
+        ...(drawnAt() < changedAt
+          ? { note: 'This picture is older than the last change made through this server: After Effects draws a new one once the comp settles, or the change did not touch the active comp at the playhead. Call see-live again in a moment, or use see-frame.' }
+          : {}),
         plugin: st.state === 'stale'
           ? `status ${Math.round((st.ageMs ?? 0) / 1000)} s old: After Effects is busy or closed, so this picture may be out of date`
           : 'running',

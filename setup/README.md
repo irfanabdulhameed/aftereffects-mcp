@@ -89,6 +89,8 @@ All optional. See `docs/ARCHITECTURE.md` for the full table.
 | `AE_MCP_ALLOW_RAW_SCRIPT` | unset | Set to `1` to enable the `run-extendscript` tool |
 | `AE_MCP_STYLE_FILE` | unset | Path to a style file, see `docs/style-file.example.json` |
 | `AE_MCP_TOOLS` | `core` | Tools listed at start: `core`, `all`, or core plus a comma list of packs (`charts,ui-demo`) |
+| `AE_MCP_LIBRARY_DIR` | unset | Component library folder used by `list-library-components`, `insert-library-component`, `save-to-library` and `remove-from-library` |
+| `AE_MCP_LIBRARY_WAIT_MS` | `20000` | How long to wait for an online-only `library.json` before using the server's last copy |
 
 ## Updating after a code change
 

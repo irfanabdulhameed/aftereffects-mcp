@@ -15,6 +15,8 @@ What follows from that:
 - Layer indices shift when layers are created, deleted or moved. After any of those, call `list-layers` again or address layers by `id` or `name`.
 
 - Tools come in packs. The core tools are always listed; `tool-packs` lists the packs (charts, ui-demo, scenes, transitions, motion-rigs, components, camera-3d, masks, styles, markers-audio, time and more) and switches them on. Switch on what the job needs before you plan it. If a tool you switched on does not appear, run it with `call-tool` (`list-tools` with `names` and `schema: true` shows its inputs).
+- Reuse before you build. When a component library is set up, `list-library-components` (components pack) shows its parts with their controls; `insert-library-component` places one and sets its controls. Save a finished, reusable component with `save-to-library`.
+- `see-live` shows the active comp at the playhead from the Live View plug-in at no cost to After Effects; use it for quick looks after a change, and `see-frame` for a chosen time or an exact check.
 
 ## 2. Addressing
 

@@ -27,7 +27,7 @@ export const CORE_TOOLS = [
   'create-shape-layer', 'set-shape-fill', 'set-shape-stroke',
   'apply-effect', 'set-effect-properties', 'list-layer-effects', 'apply-effect-template',
   'animate-property', 'add-entrance', 'add-exit', 'typewriter-text',
-  'see-frame', 'see-frames',
+  'see-frame', 'see-frames', 'see-live',
   'audit-composition', 'save-version', 'purge-caches',
 ] as const;
 

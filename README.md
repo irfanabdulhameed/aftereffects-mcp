@@ -8,8 +8,8 @@ What sets it apart from other After Effects servers:
 - Self-verification: `see-frame` and `see-frames` return PNG frames so the agent looks at its own work before reporting.
 - Rig tools: the four studio rigs (edge glow, power warp transition, depth map blur reveal, blur colour reveal) as one-call tools with every parameter.
 - A style file: pin house durations, easings, text styles and colours, and reference them as `@style.entrance` or `@style.h1`.
-- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 263 tools uses them well.
-- A small tool list: 61 core tools are always on and the rest come in packs the agent switches on when a job needs them, so a client reads about a fifth of the definitions.
+- An agent guide served by `get-help`, plus MCP prompts and resources, so an agent with 267 tools uses them well.
+- A small tool list: 62 core tools are always on and the rest come in packs the agent switches on when a job needs them, so a client reads about a fifth of the definitions.
 - Idempotent effects, real text animators, one easing model for every keyframe, and every command undoable in one step.
 - Components: turn layers into reusable parts with a simple controls list (Essential Properties), place many copies with different text and colours, save them as templates or a library.
 - Animation shortcuts built the way an animator builds them: few eased keyframes, text animators and expressions, never a key on every frame.
@@ -79,7 +79,7 @@ Full details, manual steps and environment variables: [setup/README.md](setup/RE
 
 ## Tool overview
 
-The client sees 61 core tools at first: projects, comps, layers, properties, keyframes, expressions, text, shapes, effects, entrances and exits, see-frame and the project check. Every group below is also a pack. The agent calls `tool-packs` to switch packs on (the client is told the tool list changed) and `call-tool` to run a tool whose pack is off, for clients that do not reload their list. To start with more, set `AE_MCP_TOOLS` to `all` or to a comma list of packs such as `charts,ui-demo,scenes`.
+The client sees 62 core tools at first: projects, comps, layers, properties, keyframes, expressions, text, shapes, effects, entrances and exits, see-frame, see-live and the project check. Every group below is also a pack. The agent calls `tool-packs` to switch packs on (the client is told the tool list changed) and `call-tool` to run a tool whose pack is off, for clients that do not reload their list. To start with more, set `AE_MCP_TOOLS` to `all` or to a comma list of packs such as `charts,ui-demo,scenes`.
 
 | Group | Count | What is in it |
 |---|---|---|
@@ -96,10 +96,10 @@ The client sees 61 core tools at first: projects, comps, layers, properties, key
 | Camera, lights, 3D | 9 | camera settings, camera moves, lights, materials, look at, Advanced 3D renderer, extrusion and bevels, environment light |
 | Time | 7 | time remap, freeze, speed, reverse, blending, loop |
 | Markers and audio | 10 | markers, waveform analysis, audio to keyframes, beat grids |
-| Render and preview | 10 | see-frame, contact sheets, render queue, aerender, stills |
+| Render and preview | 12 | see-frame, see-live (Live View plug-in), contact sheets, render queue, aerender, stills |
 | Rigs | 5 | the four panels as tools |
 | Batch, workflow, utilities | 17 | batch, undo, status, snapshots, find, replace, relink |
-| Components and templates | 9 | make a component with Essential Properties, set each copy's values, place many copies, responsive timing, .mogrt export, a component library |
+| Components and templates | 11 | make a component with Essential Properties, set each copy's values, place many copies, responsive timing, .mogrt export, a component library to save parts into and insert them from (works from OneDrive or iCloud with parts downloaded on demand) |
 | Animation shortcuts | 9 | move a property, entrances and exits with stagger, typewriter with cursor, word-by-word reveal, button press, move along a path, replay at markers, camera push |
 | Layer styles | 4 | drop shadow, glows, bevel, satin, colour and gradient overlay, stroke |
 | Project check | 4 | construction audit, clear caches, save a numbered version, sort the project into folders |
@@ -112,6 +112,10 @@ The client sees 61 core tools at first: projects, comps, layers, properties, key
 | Help and packs | 4 | agent guide, tool list with inputs, packs on and off, run any tool |
 
 Every tool with its inputs and an example: [docs/TOOLS.md](docs/TOOLS.md) (generated). How an agent should work with them: [docs/AGENT-GUIDE.md](docs/AGENT-GUIDE.md).
+
+## Live View (macOS)
+
+A small native plug-in keeps a picture of the active composition at the playhead in the bridge folder, drawn only after the comp settles, so `see-live` shows the agent what the viewer shows without running a script or a render. Build and install steps: [native/live-view/README.md](native/live-view/README.md). Without it, `see-frame` does the same job on request.
 
 ## The four builder panels
 
