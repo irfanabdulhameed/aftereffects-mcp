@@ -146,7 +146,25 @@ def bridge(t):
     return s
 
 
-for name, fn in {"how-it-works": how_it_works, "session": session, "guard": guard, "bridge": bridge}.items():
+def features(t):
+    s = Svg(1200, 400, t)
+    items = [
+        ("Batching", ["Many steps in one round-trip", "and one undo step."]),
+        ("Self-checking", ["see-frame returns PNG frames so", "the agent looks at its own work."]),
+        ("Components", ["Essential Properties, copies with", "new text and colours, a library."]),
+        ("Real animation", ["Few eased keys, text animators,", "expressions. Never frame by frame."]),
+        ("Film building", ["Scene plans, transitions, UI demo", "moves, charts, 3D cameras."]),
+        ("Unattended runs", ["A guard handles popups and", "stuck panels on macOS."]),
+    ]
+    w, h, gap = 376, 170, 20
+    for i, (title, lines) in enumerate(items):
+        x = 20 + (i % 3) * (w + gap)
+        y = 20 + (i // 3) * (h + gap)
+        s.card(x, y, w, h, title, lines, num=i + 1, accent=(i == 0))
+    return s
+
+
+for name, fn in {"how-it-works": how_it_works, "session": session, "guard": guard, "bridge": bridge, "features": features}.items():
     for theme, t in THEMES.items():
         fn(t).save(name, theme)
 print("diagrams written to", OUT)

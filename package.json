@@ -1,7 +1,7 @@
 {
   "name": "aftereffects-mcp",
   "version": "2.6.4",
-  "description": "Model Context Protocol server and builder panels for Adobe After Effects",
+  "description": "MCP server for Adobe After Effects: let Claude, Cursor and any AI agent build, animate, check and render compositions",
   "private": true,
   "license": "MIT",
   "workspaces": [
@@ -19,5 +19,30 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "keywords": [
+    "after-effects",
+    "adobe-after-effects",
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "claude",
+    "claude-code",
+    "ai-agent",
+    "extendscript",
+    "motion-graphics",
+    "motion-design",
+    "animation",
+    "automation",
+    "video",
+    "keyframes"
+  ],
+  "homepage": "https://github.com/irfanabdulhameed/aftereffects-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/irfanabdulhameed/aftereffects-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/irfanabdulhameed/aftereffects-mcp/issues"
   }
 }

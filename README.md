@@ -1,6 +1,39 @@
-# aftereffects-mcp
+<p align="center">
+  <img src="docs/media/hero.svg" alt="After Effects MCP: let Claude, Cursor and any AI agent build, animate, check and render inside Adobe After Effects" width="100%">
+</p>
 
-A Model Context Protocol server that lets Claude Code, Claude Desktop, VS Code and any other MCP client build and edit inside a running Adobe After Effects, plus four standalone builder panels for people who prefer a button. It is for motion designers who want an agent to do the tedious parts (comps, layers, keyframes, effects, markers, renders) and for developers automating After Effects.
+<p align="center">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-4493F8?style=flat-square"></a>
+  <img alt="278 tools" src="https://img.shields.io/badge/tools-278-9B8CFF?style=flat-square">
+  <img alt="Adobe After Effects 2022 to 2026" src="https://img.shields.io/badge/After%20Effects-2022%E2%80%932026-F778BA?style=flat-square">
+  <img alt="macOS and Windows" src="https://img.shields.io/badge/macOS%20%7C%20Windows-supported-2EA043?style=flat-square">
+  <img alt="Node 18 or later" src="https://img.shields.io/badge/node-%E2%89%A518-5FA04E?style=flat-square">
+  <a href="CHANGELOG.md"><img alt="Version 2.6.4" src="https://img.shields.io/badge/version-2.6.4-8B949E?style=flat-square"></a>
+</p>
+
+# After Effects MCP server: control Adobe After Effects with AI
+
+**aftereffects-mcp** is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for Adobe After Effects. It lets Claude Code, Claude Desktop, Cursor, VS Code and any other MCP client build and edit inside a running After Effects: compositions, layers, keyframes, expressions, text animators, shapes, effects, markers, 3D cameras and renders. It also ships four standalone builder panels for people who prefer a button.
+
+It is for motion designers who want an AI agent to do the tedious parts, and for developers automating After Effects (ExtendScript) with an LLM.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/features-dark.svg">
+    <img alt="Six strengths: batching, self-checking, components, real animation, film building and unattended runs" src="docs/media/features-light.svg" width="100%">
+  </picture>
+</p>
+
+## See it work
+
+Both clips were built in After Effects by the agent from the prompts below (examples [1](examples/01-title-card.md) and [2](examples/02-lower-third.md)), with few eased keyframes and no overshoot, then rendered.
+
+| Prompt | Result |
+|---|---|
+| "Make a 1080p comp called Intro. Add the title NORTHWIND with the subtitle Annual Report 2026, dark background, title fades and rises in, subtitle follows." | <img src="docs/media/demo-title-card.gif" alt="A dark title card: an accent bar grows, the title NORTHWIND fades and rises in, then the subtitle Annual Report 2026" width="420"> |
+| "Add a lower third for Maya Chen, Head of Product, sliding in at 1 s and out at 3 s." | <img src="docs/media/demo-lower-third.gif" alt="A blue lower third slides in from the left with the name Maya Chen and the role Head of Product, then slides out" width="420"> |
+
+## Why this server
 
 What sets it apart from other After Effects servers:
 
@@ -177,6 +210,33 @@ Every error code and what to do: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.
 - Tested here: After Effects 2026 (26.5) on macOS with Apple silicon, driven for long unattended runs through the bridge and `ae-do`; the Node side and the mock bridge with Node 20 to 23. `npm run smoke` checks a live After Effects, and `docs/DECISIONS.md` lists the matchNames and version behaviours not yet verified on older versions.
 - Mac and Windows: paths, the panel install and the setup scripts handle both. Continuous integration runs on Ubuntu and Windows with Node 20 and 22.
 - Node.js 18 or later.
+
+## FAQ
+
+**What is an After Effects MCP server?**
+A program that exposes After Effects to an AI agent as tools over the Model Context Protocol. The agent calls a tool such as `create-composition` or `set-keyframes-multi`, and a panel inside After Effects does the work and returns the result.
+
+**Which AI clients work with it?**
+Any MCP client: Claude Code, Claude Desktop, Cursor, VS Code and other MCP clients. Setup for Claude Code is in the quick start above; other clients use the same command and path.
+
+**Does it need a plug-in, an API key or a network port?**
+No. The server and the panel exchange files in a shared folder, so nothing listens on a network port, and the only thing you install into After Effects is the panel script. Only a few optional tools, such as icon search and Figma import, go online.
+
+**Which After Effects versions are supported?**
+2022 and later for the core tools, tested on 2026 (26.5). Newer-only features return a clear `unsupported` error on older versions. See [Compatibility](#compatibility).
+
+**Can the agent check its own work?**
+Yes. `see-frame` and `see-frames` return PNG frames, and `see-live` (macOS, with the Live View plug-in) shows what the viewer shows. The project check flags frame-by-frame keys, loose layers, broken expressions and missing fonts before anyone sees the work.
+
+**Will it make a mess of my project?**
+Every command is one undo step, effects are idempotent, and the project check and sorting tools keep the project organised.
+
+**Is it free?**
+Yes, MIT licensed.
+
+## Related topics
+
+After Effects automation, After Effects scripting with AI, ExtendScript, JSX, Claude Code motion graphics, MCP server for motion design, AI video editing automation, After Effects expressions, text animators, keyframe automation, Essential Properties, motion design tools.
 
 ## Contributing
 
